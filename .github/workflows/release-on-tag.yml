@@ -1,0 +1,60 @@
+name: Release on Tag
+on:
+  workflow_run:
+    workflows: ["Build on Tag"]
+    types: [completed]
+
+jobs:
+  release:
+    # Disabled alongside Build on Tag until release protections are rebuilt.
+    if: ${{ false && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      # `contents: write` creates the release. `actions: read` is what lets
+      # download-artifact reach across into the triggering run.
+      contents: write
+      actions: read
+    steps:
+      # A `workflow_run` job runs in its own run, so `download-artifact`
+      # looks in ITS artifacts by default and finds nothing. Both `run-id`
+      # and `github-token` are required for a cross-run download.
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-installer-${{ github.event.workflow_run.head_branch }}
+          path: dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # A release with no installer in it is worse than no release, because
+      # the tag looks shipped. Fail loudly instead.
+      - name: Refuse an empty release
+        run: |
+          set -e
+          count=0
+          for f in dist/GoldwingMediaPlayer-Setup-*.exe; do
+            test -s "$f" || { echo "$f is missing or empty"; exit 1; }
+            test -s "$f.sha256" || { echo "$f.sha256 is missing or empty"; exit 1; }
+            count=$((count + 1))
+          done
+          test "$count" -eq 1 || { echo "expected exactly one installer, found $count"; exit 1; }
+          ls -l dist
+
+      # DRAFT, on purpose. Chandler publishes the release by hand after
+      # `tools/wti_appcast.py publish` has produced latest.json and the two
+      # signature files, uploaded in the order it prints (signatures first,
+      # installer last), so no client ever sees a feed it cannot verify.
+      #
+      # Pinned to a commit SHA, not to `v2`: this third-party action runs
+      # with `contents: write`, and a tag can be moved under us. SHA 3bb1273
+      # is what `v2` (= v2.6.2) resolved to on 2026-08-23; bump it by reading
+      # the diff, never by following the tag.
+      - name: Create the draft GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ github.event.workflow_run.head_branch }}
+          files: |
+            dist/GoldwingMediaPlayer-Setup-*.exe
+            dist/GoldwingMediaPlayer-Setup-*.exe.sha256
+          generate_release_notes: true
+          draft: true
+          fail_on_unmatched_files: true

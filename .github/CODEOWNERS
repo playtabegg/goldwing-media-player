@@ -1,0 +1,6 @@
+# The two places somebody else's change can ship a binary to a customer or
+# change what a customer is told to trust. A review from the owner is required
+# on both, and the `release` environment's required reviewer is the gate that
+# survives a tag carrying its own edited workflow.
+/.github/workflows/ @playtabegg
+/CHECKSUMS.md @playtabegg
