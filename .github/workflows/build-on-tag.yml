@@ -1,0 +1,138 @@
+name: Build on Tag
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  build-signed:
+    # Disabled until the fresh repository has its release environment,
+    # reviewer, tag protections and matching Azure federated identity.
+    if: ${{ false }}
+    runs-on: windows-latest
+    # A HUMAN GATE ON THE SIGNER, and the load-bearing half of the design.
+    #
+    # For a `push` event GitHub runs the workflow file FROM THE PUSHED REF, so
+    # a tag can carry its own edited copy of this file. No check written in
+    # this file can survive that. Only something OUTSIDE the ref can: an
+    # environment with a required reviewer, and an Azure federated credential
+    # whose subject is `repo:playtabegg/goldwing-media-player:environment:release`. Then
+    # a tag alone mints nothing, because the token will not issue without the
+    # environment and the environment needs a person.
+    #
+    # Configure BOTH in the dashboards (required release protections); they cannot be set here:
+    #   GitHub  -> Settings -> Environments -> `release` -> required reviewers
+    #   Azure   -> App registration -> federated credential subject as above
+    environment: release
+    permissions:
+      # `id-token: write` lets azure/login mint a federated OIDC token. There
+      # is no client secret anywhere in this repo, and there must never be.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The ancestry check below has to see `master`.
+          fetch-depth: 0
+
+      # Defence in depth, not the gate: refuses to sign a tag pointing at a
+      # commit that never landed on `master`.
+      - name: Refuse a tag that is not on master
+        shell: bash
+        run: |
+          git fetch --no-tags origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::$GITHUB_SHA is not an ancestor of origin/master. Signing refused."
+            exit 1
+          fi
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install deps
+        run: |
+          pip install uv
+          uv pip install --system -e .[dev]
+
+      # GOLD-4 (11 Sep 2026): this workflow went from checkout to a signed
+      # installer with no test in between. The same gate Test on PR runs.
+      - name: Ruff
+        run: ruff check wti_player tests tools
+
+      - name: Unit tests
+        run: python -m pytest tests/unit -m "not engine and not hardware and not media" -q
+
+      # The tag names the version the code carries, or the build stops: a
+      # v1.0.1 tag on a 1.0.0 tree would publish a feed that offers itself.
+      - name: Refuse a tag that does not match wti_player/version.py
+        id: version
+        shell: bash
+        run: |
+          version=$(python -c "from wti_player.version import VERSION; print(VERSION)")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match VERSION $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # The pinned VLC runtime (version and SHA-256 in the script) goes in
+      # beside the EXE; nothing about the build reaches into a system VLC.
+      - name: Fetch the pinned VLC
+        run: python tools/fetch_vlc.py
+
+      - name: Build the Player
+        run: python tools/build_exe.py
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer
+        run: python tools/build_installer.py
+
+      # The Trusted Signing dlib is a .NET 8 assembly; the runner ships .NET
+      # but not necessarily 8.x, and signtool's failure without it is unhelpful.
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # Federated OIDC login. The three AZURE_* values are IDs, not secrets;
+      # they are repo secrets only to keep the tenant out of public logs.
+      # SHA-pinned, not tag-pinned: `azure/login` is third-party to `actions`
+      # and runs immediately before the signer with `id-token: write`.
+      - name: Azure login (OIDC)
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # `tools/publish.py` looks for Microsoft's dlib in a sibling checkout's
+      # cache or `WTI_SIGNING_DLIB`; a runner has neither, so it is fetched
+      # from nuget.org here (the same package rialto2's signer downloads).
+      - name: Fetch the Trusted Signing dlib
+        shell: pwsh
+        run: |
+          nuget install Microsoft.Trusted.Signing.Client -Version 1.0.95 -OutputDirectory tools/TrustedSigning -NonInteractive
+          $dlib = Get-ChildItem -Path tools/TrustedSigning -Recurse -Filter Azure.CodeSigning.Dlib.dll | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          if (-not $dlib) { Write-Error "Azure.CodeSigning.Dlib.dll (x64) not found in the NuGet package"; exit 5 }
+          "WTI_SIGNING_DLIB=$($dlib.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      # Signs the installer, reads the subject back (anything but "We The
+      # Indies, LLC" is a refusal), hashes the SIGNED bytes and writes
+      # `<installer>.sha256` beside it. `--yes` because nobody is at the
+      # keyboard; the human gate is the environment above.
+      - name: Sign, verify and hash the installer
+        run: python tools/publish.py --yes
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-installer-${{ github.ref_name }}
+          path: |
+            dist/GoldwingMediaPlayer-Setup-${{ steps.version.outputs.version }}.exe
+            dist/GoldwingMediaPlayer-Setup-${{ steps.version.outputs.version }}.exe.sha256
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wti-player"
+# The version lives in wti_player/version.py; this reads it from there.
+dynamic = ["version"]
+description = "GoldWing Media Player: one app for the discs we make and the discs people already own."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "We The Indies, LLC" },
+]
+keywords = ["blu-ray", "dvd", "audio-cd", "optical", "player", "bdmv", "m-disc"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Win32 (MS Windows)",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "PyQt6>=6.7",
+    "python-vlc>=3.0.20",
+]
+
+[project.optional-dependencies]
+# The film-menu designs (`wti_player.menu`) are drawn with Pillow. The Player
+# itself never imports it - every use is inside a function - so a disc still
+# plays on a machine that has no imaging library.
+menus = ["pillow>=10.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    # tests/unit/test_factory_contract.py validates the factory's documents
+    # against its schema (draft-07). Test-only; the Player never imports it.
+    "fastjsonschema>=2.19",
+    "ruff>=0.3",
+    "mypy>=1.8",
+    "pyinstaller>=6.0",
+    "pillow>=10.0",
+]
+
+[project.gui-scripts]
+wti-player = "wti_player.app:main"
+
+[tool.setuptools.packages.find]
+include = ["wti_player*"]
+exclude = ["tests*", "tools*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = ["vendor", "tests/fixtures/_generated"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
+# The spikes are kept for their evidence, not their style. They print
+# with %-formatting because that is what was written under the clock.
+"tools/spike_*.py" = ["UP031"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["vendor/", "build/", "dist/", "tests/fixtures/_generated/"]
+
+[[tool.mypy.overrides]]
+# The spike is a throwaway script kept for its evidence, not app code.
+module = ["tools.spike_bd_nav"]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+markers = [
+    "engine: needs a real libvlc runtime (vendor/vlc or a system VLC)",
+    "hardware: needs a physical optical drive, with or without a disc in it",
+    "media: needs the generated fixture media (python tools/make_fixtures.py)",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "wti_player.version.VERSION" }

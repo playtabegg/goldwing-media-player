@@ -1,0 +1,50 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Vendored third-party runtime (fetched, never committed) ---
+# `python tools/fetch_vlc.py` puts the VLC/libvlc runtime here. It is 80 MB
+# of someone else's LGPL/GPL binaries with its own licence file; the repo
+# pins the version and the SHA-256 instead of carrying the bytes.
+vendor/
+
+# --- Build output ---
+# Written by tools/build_exe.py; absent in a checkout on purpose.
+wti_player/_build_stamp.py
+build/
+dist/Player/
+dist/Player.exe
+dist/*.zip
+dist/*.sha256
+dist/release/
+*.key
+*.pfx
+*.p12
+*.pem
+dist/*Setup*.exe
+dist/LICENSE-NOTICE.txt
+tools/player.iss
+tools/player.spec
+*.spec.bak
+
+# --- Fixtures that are generated, not authored ---
+tests/fixtures/_generated/
+
+# --- Menu design renders ---
+# The four contact sheets are committed; they are what a person reviews.
+# The full-size composites and every button tile behind them are generated
+# by `python tools/menu_contact_sheet.py` and are 60MB of PNG.
+_design/menus/full/
+
+# --- Local scratch ---
+.env
+.env.*
+!.env.example
+*.log
