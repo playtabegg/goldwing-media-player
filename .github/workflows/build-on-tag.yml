@@ -94,7 +94,7 @@ jobs:
       # The Trusted Signing dlib is a .NET 8 assembly; the runner ships .NET
       # but not necessarily 8.x, and signtool's failure without it is unhelpful.
       - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
 
