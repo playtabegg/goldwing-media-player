@@ -1,101 +1,86 @@
 # Goldwing Media Player
 
-**One player for We The Indies discs, Rialto discs and the supported discs you already own.**
+**A free media player for movies, music and compatible game discs.**
 
-Goldwing Media Player brings your disc's title, chapters and artwork together
-with playback. Use it with discs made and distributed through We The Indies,
-including compatible discs built with Rialto 1.5, and with supported unprotected
-discs you already own. No account, telemetry or update nag.
+Goldwing brings playback, chapters and your disc's artwork into one Windows
+app. It uses **VLC's libVLC playback engine** and is free software under the
+**GNU General Public License, version 3 or later**.
 
-## What you can use it for
+Play movies, albums and compatible Windows game discs made and distributed
+through [We The Indies](https://wetheindies.com), an independent physical
+publisher for games, films and music. That includes compatible discs built
+with [Rialto 1.5](https://wetheindies.com/resources/rialto), the free disc-making
+software for independent developers, filmmakers and musicians. Goldwing also
+plays supported unprotected discs you already own.
 
-- **We The Indies and Rialto movie and music discs:** play supported content and see the title,
-  chapters, case and disc artwork supplied with the disc.
-- **We The Indies and Rialto game discs:** open the disc's launcher/menu to install or start its
-  game. The game runs through Windows; Goldwing is not a game emulator.
-- **Unprotected DVD-Video:** watch titles, use supported disc menus and select
-  chapters. DVD navigation is handled without a CSS descrambler.
-- **Unprotected Blu-ray:** watch titles, use supported HDMV menus and select
-  chapters. Java-based BD-J menus are not included; available titles can still
-  be selected directly on supported discs.
-- **Audio CDs:** play tracks and show CD-TEXT names when the disc supplies them.
-- **Disc images and folders:** open supported ISO images, BDMV and VIDEO_TS
-  folders from your computer.
-- **Data and M-Disc archives:** browse the files on the disc.
+## Download for Windows
 
-Playback depends on a supported disc format, readable media and compatible
-content. A Blu-ray drive is required for physical Blu-rays; other discs need
-the appropriate drive. Games keep their own Windows/system requirements.
+[**Download Goldwing Media Player 1.0.0**](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.0/GoldwingMediaPlayer-Setup-1.0.0.exe)
 
-## Download and run
+Windows 10 (1809 or later) or Windows 11, 64-bit. **The installer includes the
+Player and its playback libraries. You do not need to install VLC, Python or
+other prerequisites, or run terminal commands.**
 
-Windows 10 (1809 or later) or Windows 11, 64-bit. Get the installer from
-[GitHub Releases](https://github.com/playtabegg/goldwing-media-player/releases).
-The released installer is signed by **We The Indies, LLC**. Install for your
-Windows user without an administrator prompt; it does not take over file
-associations. Open a disc, image or folder from the Player.
+Run the installer. At the end, leave **Open Goldwing Media Player** selected
+to open it, or use its Start menu shortcut later. Choose **Open a folder**,
+**Open a disc image**, or a disc in your drive. Install for your Windows user;
+the installer does not take over file associations.
 
-**Mac and Linux versions are coming soon.** The current download is for Windows.
+The installer is code-signed by **We The Indies, LLC**. Check the publisher and
+the [published SHA-256](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.0/GoldwingMediaPlayer-Setup-1.0.0.exe.sha256)
+before installing. A new signed installer can still prompt Windows SmartScreen.
 
-## Updates
+**Mac and Linux versions are coming soon.** Today's installer is for Windows.
 
-Use **Help > Check for a new Goldwing** when you want to check. Goldwing verifies
-the signed update feed, installer signature and hash before offering an update.
-It asks before downloading/installing; it does not update on its own.
-New versions use the same public release/feed addresses, so installed Players
-can find future releases without reinstalling manually.
+## What it plays
 
-Maintainers: see [the release guide](RELEASING.md) for version bumps, tests,
-signing, feed preparation and the separate publication checkpoints.
+- **Movies:** unprotected DVD-Video and Blu-ray, with chapters and supported
+  menus. Blu-ray HDMV menus are supported; Java-based BD-J menus are not.
+- **Music:** audio CDs, with CD-TEXT track names when supplied by the disc,
+  and supported music content on movie/data discs.
+- **We The Indies and Rialto discs:** supported movies, music and Windows
+  game launchers, with the title, chapters and actual case/disc artwork
+  supplied on the disc.
+- **Game discs:** open a compatible Windows launcher/menu to install or
+  start the game. The game keeps its own system requirements; Goldwing is
+  not a console emulator.
+- **Images, folders and archives:** open supported ISO images, BDMV and
+  VIDEO_TS folders, or browse files on data and M-Disc archives.
+
+A readable disc and matching optical drive are needed for physical media;
+folders and images play without a drive. Compatibility depends on the disc's
+format and content.
+
+## Your copies and updates
+
+Keep a disc folder on your shelf to open the same copy again. Playback needs
+no account, and Goldwing has no telemetry or automatic update nag.
+
+Use **Help > Check for a new Goldwing** when you want to check for updates.
+Goldwing verifies the signed feed, installer signature and checksum before
+offering an update. It asks before downloading or installing.
 
 ## Protected commercial discs and the roadmap
 
-**CSS-protected DVDs and AACS-protected Blu-rays do not play in this release.**
+**CSS-protected DVDs and AACS-protected Blu-rays do not play in 1.0.0.**
 Goldwing does not include a descrambler or claim licensed protected playback.
-Installer code signing identifies the software publisher; it does not grant
-DVD or Blu-ray content-protection licences.
+Code-signing the installer does not grant disc-content licences.
 
-Our plan is to add officially licensed playback for protected DVDs and
-Blu-rays through the appropriate licensing and compliance processes. This
-depends on obtaining licences, meeting their requirements and releasing an
-update. No availability date or universal disc compatibility is promised.
-See [DVD CCA](https://www.dvdcca.org/) and
-[AACS licensing](https://aacsla.com/license-aacs/) for the respective processes.
+Officially licensed protected-disc playback is planned for a future update.
+We will obtain the appropriate licences and meet their requirements before
+offering it. See [DVD CCA](https://www.dvdcca.org/) and
+[AACS licensing](https://aacsla.com/license-aacs/) for those processes.
 
-## Build from source
+**Ultimately, the hurdle for me is affording the licences that let me offer
+official protected-disc playback.**
 
-```powershell
-python -m pip install -e ".[dev]"
-python tools/fetch_vlc.py
-python Player.pyw
-```
-
-The VLC fetch checks the pinned version/hash and prepares the Player's
-permitted runtime. A standard system VLC containing CSS-enabled DVD plugins
-is refused; it is not a substitute for the prepared runtime.
-
-```powershell
-python tools/make_fixtures.py
-python -m pytest tests/unit -q
-python -m ruff check .
-python tools/build_exe.py --clean
-python tools/build_installer.py
-python tools/licence_notice.py --check
-```
-
-Media fixtures are generated locally and excluded from Git. Tests requiring
-unavailable media/runtime skip with instructions; check the skip summary.
-If testing alongside a website worktree, set `WTI_TEST_WEB_ROOT` to that
-checkout's root to cross-check its public source link against the update feed.
-Otherwise this optional cross-project check uses a sibling `wetheindies-web`.
-Inno Setup 6 is required to build the installer. Builds are unsigned until the
-separate signing step. Optional showcase tools may need Pillow, OpenCV,
-FFmpeg or tsMuxeR; these are not Player runtime dependencies.
-
-## Licence
+## Source and contributors
 
 Goldwing is free software under the **GNU General Public License, version 3
-or later**. See [LICENSE](LICENSE). The installer carries the generated
-third-party notice and licence texts; the release's source tag identifies the
-corresponding Player source. Vendored runtime binaries, signing keys and
-private disc libraries are excluded from this repository.
+or later**. See [LICENSE](LICENSE). VLC's playback libraries and other bundled
+components retain their own licences, listed in the installed notices.
+
+[Building from source](BUILDING.md) is for contributors; installer users do
+not need those steps. Maintainers can use the [release guide](RELEASING.md).
+The version's release tag identifies its corresponding source. Signing keys,
+vendored runtime binaries and private disc libraries are excluded from Git.

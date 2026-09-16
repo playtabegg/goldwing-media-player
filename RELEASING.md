@@ -7,7 +7,7 @@ build nor feed preparation pushes code or publishes a release.
 ## A routine update
 
 1. Bump `VERSION` in `wti_player/version.py` to the next `X.Y.Z`, update
-   `CHANGELOG.md`, commit reviewed changes to `master`, and check the tree is
+   the README and GitHub release description, commit reviewed changes to `master`, and check the tree is
    clean. Keep the product name **Goldwing Media Player**.
 2. Run the unit suite and lint. Prepare the pinned VLC runtime, build the EXE
    and installer, and check the generated licence notice:
