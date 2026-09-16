@@ -18,7 +18,7 @@ jobs:
       # A `workflow_run` job runs in its own run, so `download-artifact`
       # looks in ITS artifacts by default and finds nothing. Both `run-id`
       # and `github-token` are required for a cross-run download.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: signed-installer-${{ github.event.workflow_run.head_branch }}
           path: dist
