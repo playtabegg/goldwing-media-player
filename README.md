@@ -1,16 +1,17 @@
 # Goldwing Media Player
 
-**One Windows player for Rialto discs, movies and music on disc.**
+**One player for We The Indies discs, Rialto discs and the supported discs you already own.**
 
 Goldwing Media Player brings your disc's title, chapters and artwork together
-with playback. Use it with the discs made through Rialto and with supported
-unprotected discs you already own. No account, telemetry or update nag.
+with playback. Use it with discs made and distributed through We The Indies,
+including compatible discs built with Rialto 1.5, and with supported unprotected
+discs you already own. No account, telemetry or update nag.
 
 ## What you can use it for
 
-- **Rialto movie and music discs:** play supported content and see the title,
+- **We The Indies and Rialto movie and music discs:** play supported content and see the title,
   chapters, case and disc artwork supplied with the disc.
-- **Rialto game discs:** open the disc's launcher/menu to install or start its
+- **We The Indies and Rialto game discs:** open the disc's launcher/menu to install or start its
   game. The game runs through Windows; Goldwing is not a game emulator.
 - **Unprotected DVD-Video:** watch titles, use supported disc menus and select
   chapters. DVD navigation is handled without a CSS descrambler.
@@ -33,6 +34,8 @@ Windows 10 (1809 or later) or Windows 11, 64-bit. Get the installer from
 The released installer is signed by **We The Indies, LLC**. Install for your
 Windows user without an administrator prompt; it does not take over file
 associations. Open a disc, image or folder from the Player.
+
+**Mac and Linux versions are coming soon.** The current download is for Windows.
 
 ## Updates
 
