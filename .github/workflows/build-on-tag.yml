@@ -29,7 +29,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The ancestry check below has to see `master`.
           fetch-depth: 0
