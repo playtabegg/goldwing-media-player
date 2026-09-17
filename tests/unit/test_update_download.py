@@ -167,6 +167,29 @@ class TestAuthenticode:
 
 
 class TestApply:
+    def test_gui_handoff_runs_hidden_with_valid_streams_and_fresh_environment(self, monkeypatch, tmp_path: Path) -> None:
+        import subprocess
+
+        from wti_player.update import apply
+
+        calls = []
+        monkeypatch.setattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000, raising=False)
+        monkeypatch.setattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0x00000200, raising=False)
+        monkeypatch.setattr(subprocess, 'DETACHED_PROCESS', 0x00000008, raising=False)
+        monkeypatch.setattr(apply.sys, 'platform', 'win32')
+        monkeypatch.setattr(apply, 'release_mutex', lambda: None)
+        monkeypatch.setenv('PSModulePath', r'C:\Program Files\PowerShell\7\Modules')
+        monkeypatch.setattr(subprocess, 'Popen', lambda command, **kwargs: calls.append((command, kwargs)))
+        apply.launch_installer(tmp_path / 'Setup.exe', ('/VERYSILENT', '/relaunch=1'), 4242)
+        command, kwargs = calls[0]
+        assert kwargs['creationflags'] & subprocess.CREATE_NO_WINDOW
+        assert not kwargs['creationflags'] & subprocess.DETACHED_PROCESS
+        assert kwargs['stdin'] == kwargs['stdout'] == kwargs['stderr'] == subprocess.DEVNULL
+        assert not any(k.casefold() == 'psmodulepath' for k in kwargs['env'])
+        assert kwargs['env']['PYINSTALLER_RESET_ENVIRONMENT'] == '1'
+        assert apply.os.environ['PSModulePath'] == r'C:\Program Files\PowerShell\7\Modules'
+        assert 'Wait-Process -Id 4242' in command[-1]
+
     def test_the_installer_starts_only_after_this_player_has_exited(self, tmp_path: Path) -> None:
         from wti_player.update.apply import installer_command
 

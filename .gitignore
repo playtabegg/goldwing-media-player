@@ -19,6 +19,7 @@ vendor/
 # Written by tools/build_exe.py; absent in a checkout on purpose.
 wti_player/_build_stamp.py
 build/
+dist/
 dist/Player/
 dist/Player.exe
 dist/*.zip

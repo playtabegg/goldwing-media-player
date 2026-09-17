@@ -79,11 +79,21 @@ def launch_installer(installer: Path, args: tuple[str, ...], wait_for_pid: int |
     release_mutex()
     flags = 0
     if sys.platform == "win32":
-        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+        # Windows PowerShell silently skips its command under DETACHED_PROCESS.
+        # A hidden console runs the waiter without showing a terminal window.
+        flags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
     command = installer_command(installer, args, os.getpid() if wait_for_pid is None else wait_for_pid)
+    environment = {k: v for k, v in os.environ.items() if k.casefold() != 'psmodulepath'}
+    # Setup's relaunch must start a fresh frozen application, not inherit the
+    # outgoing PyInstaller application's process state.
+    environment['PYINSTALLER_RESET_ENVIRONMENT'] = '1'
     subprocess.Popen(
         command,
         close_fds=True,
         creationflags=flags,
         cwd=str(installer.parent),
+        env=environment,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
