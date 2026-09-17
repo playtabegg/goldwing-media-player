@@ -21,6 +21,7 @@ from wti_player.ui.main_window import MainWindow
 from wti_player.update.check import Outcome
 from wti_player.update.feed import Release
 from wti_player.update.ui import UpdateCheck
+from wti_player.version import VERSION
 
 
 @pytest.fixture(scope="session")
@@ -97,7 +98,7 @@ class TestTheMenuItem:
         assert strings.UPDATE_GET in labels
         assert strings.UPDATE_NOT_NOW in labels
         assert strings.UPDATE_NOTES in labels
-        assert "9.9.9" in box.text() and "1.0.0" in box.text()
+        assert "9.9.9" in box.text() and f"You have {VERSION}." in box.text()
         box.close()
 
     def test_a_second_click_while_one_runs_is_ignored(self, qt_app, window) -> None:

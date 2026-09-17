@@ -10,7 +10,7 @@ import ast
 from pathlib import Path
 
 from wti_player import strings
-from wti_player.version import display_version, window_title
+from wti_player.version import VERSION, display_version, window_title
 
 
 class TestTheLicensingLine:
@@ -63,12 +63,12 @@ class TestEarlyBuild:
 
     def test_the_version_is_the_number_and_nothing_else(self) -> None:
         assert "early build" not in display_version()
-        assert display_version() == "1.0.0"
+        assert display_version() == VERSION
 
     def test_the_about_box_still_shows_the_version(self) -> None:
         text = strings.about_text()
         assert "early build" not in text.lower()
-        assert "Version 1.0.0" in text
+        assert f"Version {VERSION}" in text
 
 
 class TestErrorText:

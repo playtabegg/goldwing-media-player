@@ -4,7 +4,7 @@ from __future__ import annotations
 
 #: Bumped by hand at release. The download page shows the same string, and
 #: pyproject.toml reads it from here, so there is one place it lives.
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 #: Kept for source compatibility; release UI uses the stable version.
 EARLY_BUILD = False

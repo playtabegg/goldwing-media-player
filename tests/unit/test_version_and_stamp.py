@@ -1,4 +1,4 @@
-"""P8 (28 Aug 2026): 1.0.0, one place the version lives, a build stamp."""
+"""The stable release version has one source, and its binaries carry a build stamp."""
 
 from __future__ import annotations
 
@@ -8,16 +8,13 @@ from pathlib import Path
 from wti_player import strings, version
 
 
-def test_the_player_ships_as_one_point_oh() -> None:
-    assert version.VERSION == "1.0.0"
+def test_the_player_ships_as_a_stable_version() -> None:
     assert re.fullmatch(r"\d+\.\d+\.\d+", version.VERSION)
 
 
 def test_the_early_build_label_is_off_by_chandlers_word() -> None:
-    # The 28 Aug ruling: 1.0.0 is the number; the label comes off by his
-    # word. He gave that word on 1 Sep 2026. The number itself stays put.
     assert version.EARLY_BUILD is False
-    assert version.display_version() == "1.0.0"
+    assert version.display_version() == version.VERSION
 
 
 def test_pyproject_reads_the_version_from_the_module() -> None:
@@ -47,8 +44,9 @@ def test_the_version_block_carries_the_stamp(tmp_path: Path) -> None:
     path = build_exe.write_version_info(tmp_path / "version_info.txt", stamp="abc123456 2026-09-01")
     text = path.read_text(encoding="utf-8")
     assert "build abc123456 2026-09-01" in text
-    assert "FileVersion', u'1.0.0'" in text
-    assert "filevers=(1, 0, 0, 0)" in text
+    assert f"FileVersion', u'{version.VERSION}'" in text
+    numbers = (*(int(part) for part in version.VERSION.split('.')), 0)
+    assert f"filevers={numbers}" in text
 
 
 def test_the_stamp_module_is_written_and_ignored(tmp_path: Path, monkeypatch) -> None:

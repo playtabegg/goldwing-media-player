@@ -1236,7 +1236,8 @@ class Banner(QFrame):
 
         self._icon = QLabel("")
         self._icon.setFixedWidth(15)
-        layout.addWidget(self._icon, 0, Qt.AlignmentFlag.AlignTop)
+        self._icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._icon, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self._label = QLabel("")
         self._label.setWordWrap(True)

@@ -19,7 +19,7 @@ from wti_player.update.minisig import parse_public_key
 def _isolated_floor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A check must not write the sequence floor into the real profile."""
     monkeypatch.setattr(
-        "wti_player.update.floor.default_path",
+        "wti_player.update.check.default_path",
         lambda: tmp_path / "last-seen-version",
     )
 

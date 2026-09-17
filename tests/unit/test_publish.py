@@ -111,7 +111,7 @@ class TestTheHashAndTheEnv:
 
     def test_the_default_release_url_is_the_public_repo(self) -> None:
         url = publish.RELEASE_URL_TEMPLATE.format(version=VERSION, name="x.exe")
-        assert url.startswith("https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.0/")
+        assert url.startswith(f"https://github.com/playtabegg/goldwing-media-player/releases/download/v{VERSION}/")
 
 
 class TestItNeverRunsInsideABuild:
