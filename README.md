@@ -15,7 +15,7 @@ plays supported unprotected discs you already own.
 
 ## Download for Windows
 
-[**Download Goldwing Media Player 1.0.0**](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.0/GoldwingMediaPlayer-Setup-1.0.0.exe)
+[**Download Goldwing Media Player 1.0.2**](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.2/GoldwingMediaPlayer-Setup-1.0.2.exe)
 
 Windows 10 (1809 or later) or Windows 11, 64-bit. **The installer includes the
 Player and its playback libraries. You do not need to install VLC, Python or
@@ -27,7 +27,7 @@ to open it, or use its Start menu shortcut later. Choose **Open a folder**,
 the installer does not take over file associations.
 
 The installer is code-signed by **We The Indies, LLC**. Check the publisher and
-the [published SHA-256](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.0/GoldwingMediaPlayer-Setup-1.0.0.exe.sha256)
+the [published SHA-256](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.2/GoldwingMediaPlayer-Setup-1.0.2.exe.sha256)
 before installing. A new signed installer can still prompt Windows SmartScreen.
 
 **Mac and Linux versions are coming soon.** Today's installer is for Windows.
@@ -62,7 +62,7 @@ offering an update. It asks before downloading or installing.
 
 ## Protected commercial discs and the roadmap
 
-**CSS-protected DVDs and AACS-protected Blu-rays do not play in 1.0.0.**
+**CSS-protected DVDs and AACS-protected Blu-rays do not play in 1.0.2.**
 Goldwing does not include a descrambler or claim licensed protected playback.
 Code-signing the installer does not grant disc-content licences.
 
