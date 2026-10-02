@@ -344,3 +344,66 @@ class TestTheDriveCheckIsOffTheInterfaceThread:
         finally:
             gate.set()
             window.close()
+
+
+class TestWhatADiscOfOursCarries:
+    """Only what the disc HAS is said: a service its maker left off is not mentioned at all."""
+
+    def _disc(self, tmp_path: Path, game: dict, *, edition: bool = False) -> Path:
+        import json
+
+        root = tmp_path / "disc"
+        root.mkdir(parents=True)
+        document = {"schema": 1, "kind": "game", "title": "Foxtale", "author": "Playtable", "id": "foxtale", "version": "1.0.0", "made_by": "We the Indies", "game": game}
+        (root / ".wti_meta.json").write_text(json.dumps(document), encoding="utf-8")
+        return root
+
+    def test_the_document_is_read_and_an_older_disc_says_nothing_about_cloud_saves(self, tmp_path: Path) -> None:
+        base = {"launch_options": [], "has_mod_tool": False, "has_bonus": False, "mac_build": False, "linux_build": False, "online_updates": True, "menu_language": "English"}
+        old = disc_meta.read(self._disc(tmp_path, base))
+        assert old is not None and old.game is not None
+        assert old.game.cloud_saves is None and old.game.soundtrack is None
+        new = disc_meta.read(self._disc(tmp_path / "b", {**base, "cloud_saves": True, "soundtrack_cd": {"title": "Low Tide", "tracks": 12}}))
+        assert new is not None and new.game is not None
+        assert new.game.cloud_saves is True
+        assert new.game.soundtrack == disc_meta.SoundtrackCd(title="Low Tide", tracks=12)
+        # Anything but a real true or false is "the disc does not say".
+        odd = disc_meta.read(self._disc(tmp_path / "c", {**base, "cloud_saves": "yes", "soundtrack_cd": "a CD"}))
+        assert odd is not None and odd.game is not None
+        assert odd.game.cloud_saves is None and odd.game.soundtrack is None
+
+    def test_the_lines_say_what_the_disc_has_and_never_what_it_lacks(self) -> None:
+        none = strings.game_carries(online_updates=False, cloud_saves=False, soundtrack=None, has_key=False)
+        assert none == []
+        updates_only = strings.game_carries(online_updates=True, cloud_saves=False, soundtrack=None, has_key=False)
+        assert updates_only == [strings.DISC_GETS_UPDATES]
+        assert all("off" not in line.lower() and "Cloud" not in line for line in updates_only)
+        everything = strings.game_carries(online_updates=True, cloud_saves=True, soundtrack=("Low Tide", 12), has_key=True)
+        assert everything == [strings.DISC_GETS_UPDATES, strings.DISC_HAS_CLOUD_SAVES, "A soundtrack CD comes in the same case: Low Tide, 12 tracks.", strings.KEY_ON_LABEL]
+        # Cloud saves rides with updates: a disc that says it without updates is not believed.
+        assert strings.game_carries(online_updates=False, cloud_saves=True, soundtrack=None, has_key=False) == []
+        # A disc from before the field says nothing about Cloud saves.
+        assert strings.game_carries(online_updates=True, cloud_saves=None, soundtrack=None, has_key=False) == [strings.DISC_GETS_UPDATES]
+
+    def test_a_soundtrack_cd_with_no_name_or_count_still_reads_as_a_sentence(self) -> None:
+        assert strings.soundtrack_line("", 0) == "A soundtrack CD comes in the same case."
+        assert strings.soundtrack_line("Low Tide", 1) == "A soundtrack CD comes in the same case: Low Tide, 1 track."
+
+    def test_the_key_line_is_not_a_lock_and_names_the_page(self) -> None:
+        assert "not a lock" in strings.KEY_ON_LABEL and "wetheindies.com/editions" in strings.KEY_ON_LABEL
+
+    def test_the_game_view_shows_them_and_hides_the_block_when_there_is_nothing(self, qt_app, tmp_path: Path) -> None:
+        from wti_player.ui.views import GameView
+
+        base = {"launch_options": [], "has_mod_tool": False, "has_bonus": False, "mac_build": False, "linux_build": False, "menu_language": "English"}
+        view = GameView()
+        root = self._disc(tmp_path, {**base, "online_updates": True, "cloud_saves": True, "soundtrack_cd": {"title": "Low Tide", "tracks": 2}})
+        view.show_disc(DiscProfile(kind=DiscKind.GAME_DISC, root=root, ours=True, meta=disc_meta.read(root)))
+        assert not view.carries.isHidden()
+        assert view.carries.text().split("\n") == [strings.DISC_GETS_UPDATES, strings.DISC_HAS_CLOUD_SAVES, "A soundtrack CD comes in the same case: Low Tide, 2 tracks."]
+        plain = self._disc(tmp_path / "plain", {**base, "online_updates": False, "cloud_saves": False})
+        view.show_disc(DiscProfile(kind=DiscKind.GAME_DISC, root=plain, ours=True, meta=disc_meta.read(plain)))
+        assert view.carries.isHidden() and view.carries.text() == ""
+        # A game from someone else is told nothing of ours.
+        view.show_disc(DiscProfile(kind=DiscKind.GAME_DISC, root=root, ours=False, meta=disc_meta.read(root)))
+        assert view.carries.isHidden()

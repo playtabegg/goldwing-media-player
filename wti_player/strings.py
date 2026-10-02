@@ -368,6 +368,41 @@ def about_text() -> str:
     )
 
 
+# -- what a disc of ours carries (1.0.3) -------------------------------------
+# Only what the disc HAS is said. A service its maker left off is not
+# mentioned at all (the rule of 2 Oct 2026): "Cloud saves: off" would be a
+# note about something the disc does not have.
+DISC_GETS_UPDATES = "This disc can get updates, from its own menu."
+DISC_HAS_CLOUD_SAVES = "Its menu can carry your saves to another computer with a Save Code."
+KEY_ON_LABEL = (
+    "This copy's preservation key is printed on the disc label. "
+    "It marks the copy as yours. It is not a lock. More at wetheindies.com/editions."
+)
+KEY_FACT = "Preservation key on the label"
+SOUNDTRACK_FACT = "Soundtrack CD in the case"
+
+
+def soundtrack_line(title: str, tracks: int) -> str:
+    """The soundtrack CD that comes in the same case, in one sentence."""
+    name = f": {title}" if title else ""
+    count = f", {tracks} tracks" if tracks > 1 else ", 1 track" if tracks == 1 else ""
+    return f"A soundtrack CD comes in the same case{name}{count}."
+
+
+def game_carries(*, online_updates: bool, cloud_saves: bool | None, soundtrack: tuple[str, int] | None, has_key: bool) -> list[str]:
+    """The lines under a game disc's note: what this disc carries, and nothing it does not."""
+    lines: list[str] = []
+    if online_updates:
+        lines.append(DISC_GETS_UPDATES)
+    if online_updates and cloud_saves:
+        lines.append(DISC_HAS_CLOUD_SAVES)
+    if soundtrack is not None:
+        lines.append(soundtrack_line(*soundtrack))
+    if has_key:
+        lines.append(KEY_ON_LABEL)
+    return lines
+
+
 def game_note(*, ours: bool, image: bool) -> str:
     """The paragraph on a game disc screen. Two discs, two sentences."""
     if ours:

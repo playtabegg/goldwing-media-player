@@ -104,6 +104,19 @@ class Extra:
 
 
 @dataclass(frozen=True)
+class SoundtrackCd:
+    """The soundtrack CD that comes in the same case as a game or a film.
+
+    The CD itself is an audio CD and carries no document, so the main disc
+    says it exists (Rialto, 2 Oct 2026). A disc made before that says
+    nothing, and nothing is shown.
+    """
+
+    title: str = ""
+    tracks: int = 0
+
+
+@dataclass(frozen=True)
 class MovieMeta:
     runtime_minutes: int = 0
     aspect_ratio: str = ""
@@ -114,6 +127,7 @@ class MovieMeta:
     audio_tracks: tuple[str, ...] = ()
     subtitle_tracks: tuple[str, ...] = ()
     extras: tuple[Extra, ...] = ()
+    soundtrack: SoundtrackCd | None = None
 
 
 @dataclass(frozen=True)
@@ -124,7 +138,11 @@ class GameMeta:
     mac_build: bool = False
     linux_build: bool = False
     online_updates: bool = False
+    #: Whether the disc's menu offers the Save Code. None on a disc made
+    #: before the field (2 Oct 2026): the disc does not say, so neither do we.
+    cloud_saves: bool | None = None
     menu_language: str = ""
+    soundtrack: SoundtrackCd | None = None
 
 
 @dataclass(frozen=True)
@@ -399,7 +417,15 @@ def _movie(raw: dict[str, Any]) -> MovieMeta:
         audio_tracks=_labels(raw.get("audio_tracks")),
         subtitle_tracks=_labels(raw.get("subtitle_tracks")),
         extras=tuple(extras),
+        soundtrack=_soundtrack(raw.get("soundtrack_cd")),
     )
+
+
+def _soundtrack(raw: Any) -> SoundtrackCd | None:
+    """The soundtrack CD's block, or None when the disc names none (or names it wrongly)."""
+    if not isinstance(raw, dict):
+        return None
+    return SoundtrackCd(title=_text(raw.get("title")), tracks=_whole(raw.get("tracks")))
 
 
 def _game(raw: dict[str, Any]) -> GameMeta:
@@ -410,7 +436,9 @@ def _game(raw: dict[str, Any]) -> GameMeta:
         mac_build=_flag(raw.get("mac_build")),
         linux_build=_flag(raw.get("linux_build")),
         online_updates=_flag(raw.get("online_updates")),
+        cloud_saves=raw.get("cloud_saves") if isinstance(raw.get("cloud_saves"), bool) else None,
         menu_language=_text(raw.get("menu_language")),
+        soundtrack=_soundtrack(raw.get("soundtrack_cd")),
     )
 
 

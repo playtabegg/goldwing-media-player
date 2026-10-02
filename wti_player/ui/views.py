@@ -311,6 +311,8 @@ class DiscHeader(QWidget):
                     facts.append(label)
                 if meta.movie.rating_text:
                     facts.append(meta.movie.rating_text)
+                if meta.movie.soundtrack is not None:
+                    facts.append(strings.SOUNDTRACK_FACT)
         # L4 (30 Aug 2026): the edition record, on every kind of disc that
         # carries one, and "signed by We The Indies" only when it verifies.
         record = disc_edition.read(profile.root)
@@ -318,6 +320,8 @@ class DiscHeader(QWidget):
             facts.append(record.line)
             if record.signed_by_us:
                 facts.append(shelf.SIGNED_BY_US)
+            # The key itself is on the label; the Player never reads or stores one (1.0.3).
+            facts.append(strings.KEY_FACT)
         self.by.setText(" · ".join(by))
         self.by.setVisible(bool(by))
         self.facts.setText(" · ".join(facts))
@@ -884,6 +888,15 @@ class GameView(QWidget):
         self.body.setMaximumWidth(560)
         self.body.setContentsMargins(0, 14, 0, 0)
         column.addWidget(self.body)
+        # What this disc carries (1.0.3): updates, Cloud saves, a soundtrack CD, its key. Empty on a disc that
+        # says none of it, and then not shown.
+        self.carries = QLabel("")
+        self.carries.setObjectName("note")
+        self.carries.setWordWrap(True)
+        self.carries.setMaximumWidth(560)
+        self.carries.setContentsMargins(0, 10, 0, 0)
+        self.carries.hide()
+        column.addWidget(self.carries)
         header.addLayout(column, 1)
         # This page is wide and the text column stops at 560 px: without a stretch the spare width was shared out
         # between the cover and the name, and the cover sat alone in the middle of the page.
@@ -947,6 +960,16 @@ class GameView(QWidget):
         self.name.style().polish(self.name)
         self.name.setText(name)
         self.body.setText(strings.game_note(ours=ours, image=profile.root.is_file()))
+        game = profile.meta.game if profile.meta is not None else None
+        record = disc_edition.read(profile.root) if profile.root.is_dir() else None
+        carries = strings.game_carries(
+            online_updates=bool(game and game.online_updates),
+            cloud_saves=game.cloud_saves if game else None,
+            soundtrack=(game.soundtrack.title, game.soundtrack.tracks) if game and game.soundtrack else None,
+            has_key=ours and record is not None,
+        ) if ours else []
+        self.carries.setText("\n".join(carries))
+        self.carries.setVisible(bool(carries))
         self.menu_button.setVisible(ours and shelf.menu_executable(profile.root) is not None)
         cover = profile.art.cover
         self.cover.setVisible(cover is not None)
