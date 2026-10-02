@@ -166,3 +166,129 @@ class TestTheAboutBox:
         text = strings.about_text()
         assert "github.com/playtabegg/goldwing-media-player" in text
         assert "<b>licences</b> folder" in text
+
+
+class TestTheDownloadSaysHowFarAndCanBeStopped:
+    class _Response:
+        def __init__(self, body: bytes, length: str | None) -> None:
+            self._body = body
+            self._at = 0
+            self.headers = {"Content-Length": length} if length is not None else {}
+
+        def geturl(self) -> str:
+            return "https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.3/setup.exe"
+
+        def read(self, size: int) -> bytes:
+            piece = self._body[self._at : self._at + size]
+            self._at += len(piece)
+            return piece
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc: object) -> None:
+            return None
+
+    URL = "https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.3/setup.exe"
+
+    def _serve(self, monkeypatch, body: bytes, length: str | None = None) -> None:
+        from wti_player.update import feed
+
+        monkeypatch.setattr(feed.urllib.request, "urlopen", lambda *_a, **_k: self._Response(body, length))
+
+    def test_the_whole_body_arrives_in_pieces_and_each_piece_is_counted(self, monkeypatch) -> None:
+        from wti_player.update import feed
+
+        body = b"x" * (feed.CHUNK_BYTES * 2 + 5)
+        self._serve(monkeypatch, body, str(len(body)))
+        seen: list[tuple[int, int]] = []
+        assert feed.fetch_bytes(self.URL, len(body), progress=lambda done, total: seen.append((done, total))) == body
+        assert [done for done, _ in seen] == [feed.CHUNK_BYTES, feed.CHUNK_BYTES * 2, len(body)]
+        assert {total for _, total in seen} == {len(body)}
+
+    def test_stop_ends_the_read_at_the_next_piece(self, monkeypatch) -> None:
+        from wti_player.update import feed
+
+        self._serve(monkeypatch, b"x" * (feed.CHUNK_BYTES * 4))
+        seen: list[int] = []
+        with pytest.raises(feed.Stopped):
+            feed.fetch_bytes(self.URL, feed.CHUNK_BYTES * 4, progress=lambda done, _t: seen.append(done), stop=lambda: len(seen) >= 2)
+        assert len(seen) == 2
+
+    def test_more_than_the_cap_is_still_refused_and_a_length_that_is_nonsense_is_nothing(self, monkeypatch) -> None:
+        from wti_player.update import feed
+
+        self._serve(monkeypatch, b"x" * 20, "plenty")
+        seen: list[tuple[int, int]] = []
+        with pytest.raises(feed.FeedProblem, match="more than Goldwing will read"):
+            feed.fetch_bytes(self.URL, 10, progress=lambda done, total: seen.append((done, total)))
+        assert seen == [(11, 0)]
+
+    def test_the_words_count_megabytes(self) -> None:
+        mb = 1024 * 1024
+        assert strings.update_progress(12 * mb, 38 * mb) == "Downloading the new Goldwing: 12 of 38 MB"
+        assert strings.update_progress(3 * mb, 0) == "Downloading the new Goldwing: 3 MB"
+
+    def test_cancel_on_the_banner_stops_the_download_and_says_so(self, qt_app) -> None:
+        window = _window(FakeScanner())
+        try:
+            window.check_for_updates(check=lambda: None)
+            assert window._update_check is not None
+            window._update_check.cancel()
+            window._update_check.busy = True
+            before = window._update_check._generation
+            window._cancel_update()
+            assert window._update_check._generation == before + 1
+            assert window._update_check.busy is False
+            assert window.banner._label.text() == strings.UPDATE_STOPPED
+        finally:
+            window.close()
+
+
+class TestTheDiagnosticsLogIsReachableFromHelp:
+    def test_the_help_menu_starts_the_log_and_keeps_it_on(self, qt_app, monkeypatch, tmp_path: Path) -> None:
+        from wti_player import app
+
+        started: list[Path] = []
+        monkeypatch.setattr(app, "log_path", lambda: tmp_path / "Player" / "player.log")
+        monkeypatch.setattr(app, "start_logging", lambda path: (started.append(path), True)[1])
+        window = _window(FakeScanner())
+        try:
+            window.log_action.trigger()
+            assert started == [tmp_path / "Player" / "player.log"]
+            assert window.log_action.isChecked() and not window.log_action.isEnabled()
+            assert window.banner._label.text() == strings.LOG_ON
+        finally:
+            window.close()
+
+    def test_a_log_that_cannot_be_written_says_so_and_unticks(self, qt_app, monkeypatch, tmp_path: Path) -> None:
+        from wti_player import app
+
+        monkeypatch.setattr(app, "log_path", lambda: tmp_path / "player.log")
+        monkeypatch.setattr(app, "start_logging", lambda _path: False)
+        window = _window(FakeScanner())
+        try:
+            window.log_action.trigger()
+            assert not window.log_action.isChecked() and window.log_action.isEnabled()
+            assert window.banner._label.text() == strings.LOG_FAILED
+        finally:
+            window.close()
+
+    def test_the_folder_is_made_and_opened(self, qt_app, monkeypatch, tmp_path: Path) -> None:
+        from wti_player import app
+        from wti_player.ui import main_window as window_module
+
+        opened: list[str] = []
+        monkeypatch.setattr(app, "log_path", lambda: tmp_path / "WeTheIndies" / "Player" / "player.log")
+        monkeypatch.setattr(window_module.QDesktopServices, "openUrl", lambda url: opened.append(url.toLocalFile()) or True)
+        window = _window(FakeScanner())
+        try:
+            window.open_diagnostics_folder()
+            assert (tmp_path / "WeTheIndies" / "Player").is_dir()
+            assert Path(opened[0]) == tmp_path / "WeTheIndies" / "Player"
+        finally:
+            window.close()
+
+    def test_the_words_no_longer_send_anyone_to_a_command_line(self) -> None:
+        assert "--log" not in strings.UNEXPECTED_PROBLEM
+        assert "Help menu" in strings.UNEXPECTED_PROBLEM

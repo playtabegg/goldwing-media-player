@@ -220,7 +220,8 @@ NOTHING_TO_PLAY = (
 UNEXPECTED_PROBLEM = (
     "Something went wrong that Goldwing did not expect. Nothing on the disc "
     "was changed. Take the disc out and put it back in. If it keeps happening, "
-    "start Goldwing with --log and it writes what happened to a file."
+    "choose Write a diagnostics log from the Help menu, do it again, and "
+    "Goldwing writes what happened to a file."
 )
 
 # -- menu preview mode -----------------------------------------------------
@@ -313,6 +314,22 @@ UPDATE_GET = "Download and install"
 UPDATE_NOTES = "What changed"
 UPDATE_NOT_NOW = "Not now"
 UPDATE_DOWNLOADING = "Downloading and checking the new Goldwing…"
+UPDATE_CANCEL = "Cancel"
+UPDATE_STOPPED = "The download was stopped. Nothing was installed."
+
+
+def update_progress(done: int, total: int) -> str:
+    """How far the download is, in megabytes: "Downloading the new Goldwing: 12 of 38 MB"."""
+    mb = 1024 * 1024
+    if total > 0:
+        return f"Downloading the new Goldwing: {done // mb} of {max(1, round(total / mb))} MB"
+    return f"Downloading the new Goldwing: {done // mb} MB"
+
+
+HELP_LOG = "Write a &diagnostics log"
+HELP_DIAGNOSTICS = "Open the diagnostics &folder"
+LOG_ON = "Goldwing is writing what happens to a file until it closes. Do the thing that went wrong, then open the diagnostics folder from the Help menu."
+LOG_FAILED = "The diagnostics file could not be written."
 
 
 def update_offer(version: str, running: str) -> str:

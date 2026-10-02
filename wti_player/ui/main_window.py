@@ -359,6 +359,12 @@ class MainWindow(QMainWindow):
         help_menu = bar.addMenu("&Help")
         self._add(help_menu, strings.UPDATE_MENU, self.check_for_updates)
         help_menu.addSeparator()
+        # The log a stuck person is told about, reachable without a command line (audit of 8 Sep 2026, PLAYERUX-9).
+        self.log_action = QAction(strings.HELP_LOG, self, checkable=True)
+        self.log_action.triggered.connect(self.set_logging)
+        help_menu.addAction(self.log_action)
+        self._add(help_menu, strings.HELP_DIAGNOSTICS, self.open_diagnostics_folder)
+        help_menu.addSeparator()
         self._add(help_menu, strings.ABOUT_TITLE, self.show_about)
 
     def _fill_recent_menu(self) -> None:
@@ -1408,6 +1414,31 @@ class MainWindow(QMainWindow):
         """The one way anything in the Player tells someone what happened."""
         self.banner.show_message(message, tone=tone)
 
+    def set_logging(self, on: bool) -> None:
+        """Start the diagnostics log from the Help menu. Once on, it stays on until Goldwing closes."""
+        from .. import app
+
+        if not on or app.start_logging(app.log_path()):
+            # Standard error now points at the file, and cannot be pointed back: the item stays ticked.
+            self.log_action.setChecked(True)
+            self.log_action.setEnabled(False)
+            self.report(strings.LOG_ON, tone="notice")
+        else:
+            self.log_action.setChecked(False)
+            self.report(strings.LOG_FAILED)
+
+    def open_diagnostics_folder(self) -> None:
+        """Open the folder the log is written to, made first so there is something to open."""
+        from .. import app
+
+        folder = app.log_path().parent
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            self.report(strings.LOG_FAILED)
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
     def show_about(self) -> None:
         box = QMessageBox(self)
         box.setWindowTitle(strings.ABOUT_TITLE)
@@ -1466,7 +1497,8 @@ class MainWindow(QMainWindow):
     def _install_update(self, release) -> None:
         if self._update_check is None:
             return
-        self.report(strings.UPDATE_DOWNLOADING, tone="notice")
+        stop = (strings.UPDATE_CANCEL, self._cancel_update)
+        self.banner.show_message(strings.UPDATE_DOWNLOADING, tone="notice", action=stop)
 
         def installed(sentence: str) -> None:
             if self._closing:
@@ -1475,7 +1507,17 @@ class MainWindow(QMainWindow):
             if sentence == strings.UPDATE_INSTALLING:
                 self.close()
 
-        self._update_check.install(release, installed)
+        def progress(done: int, total: int) -> None:
+            if not self._closing:
+                self.banner.show_message(strings.update_progress(done, total), tone="notice", action=stop)
+
+        self._update_check.install(release, installed, progress)
+
+    def _cancel_update(self) -> None:
+        """Cancel on the download's banner: the read stops at its next piece and nothing is installed."""
+        if self._update_check is not None:
+            self._update_check.cancel()
+        self.report(strings.UPDATE_STOPPED, tone="notice")
 
     def closeEvent(self, event) -> None:
         # Every timer, before the engine goes. The gamepad one was being

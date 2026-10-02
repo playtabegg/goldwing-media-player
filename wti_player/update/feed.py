@@ -73,11 +73,33 @@ def host_allowed(url: str, allowed: frozenset[str] = trust.ALLOWED_HOSTS) -> boo
     return parsed.scheme == "https" and (parsed.hostname or "") in allowed
 
 
-def fetch_bytes(url: str, cap: int, timeout: float = TIMEOUT_SECONDS) -> bytes:
+class Stopped(FeedProblem):
+    """The person stopped the download. Not a failure: nothing is said about it."""
+
+
+#: How much is read at a time. Small enough that Cancel answers at once and
+#: the count moves; large enough that the loop costs nothing.
+CHUNK_BYTES = 256 * 1024
+
+Progress = Callable[[int, int], None]
+
+
+def fetch_bytes(
+    url: str,
+    cap: int,
+    timeout: float = TIMEOUT_SECONDS,
+    *,
+    progress: Progress | None = None,
+    stop: Callable[[], bool] | None = None,
+) -> bytes:
     """GET ``url`` over https, no cookies, no identifiers, at most ``cap`` bytes.
 
     Raises :class:`FeedProblem` for anything that is not a complete, in-cap
     body from an allowed host (redirects included).
+
+    ``progress(done, total)`` is told how far the read is, ``total`` being the
+    length the server named or 0 when it named none. ``stop()`` is asked
+    between pieces; when it says yes the read ends with :class:`Stopped`.
     """
     if not host_allowed(url):
         raise FeedProblem("That address is not one Goldwing fetches from.")
@@ -86,7 +108,21 @@ def fetch_bytes(url: str, cap: int, timeout: float = TIMEOUT_SECONDS) -> bytes:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             if not host_allowed(response.geturl()):
                 raise FeedProblem("The download was sent somewhere Goldwing does not fetch from.")
-            data = response.read(cap + 1)
+            total = _named_length(response)
+            pieces: list[bytes] = []
+            done = 0
+            # One byte past the cap is read, so "too much" can be told from "exactly the cap".
+            while done <= cap:
+                if stop is not None and stop():
+                    raise Stopped("The download was stopped.")
+                piece = response.read(min(CHUNK_BYTES, cap + 1 - done))
+                if not piece:
+                    break
+                pieces.append(piece)
+                done += len(piece)
+                if progress is not None:
+                    progress(done, total)
+            data = b"".join(pieces)
     except FeedProblem:
         raise
     except urllib.error.HTTPError as error:
@@ -108,6 +144,14 @@ def fetch_bytes(url: str, cap: int, timeout: float = TIMEOUT_SECONDS) -> bytes:
     if len(data) > cap:
         raise FeedProblem("The release server sent more than Goldwing will read.")
     return bytes(data)
+
+
+def _named_length(response: object) -> int:
+    """The Content-Length the server named, or 0 when it named none or nonsense."""
+    try:
+        return max(0, int(response.headers.get("Content-Length") or 0))  # type: ignore[attr-defined]
+    except (AttributeError, TypeError, ValueError):
+        return 0
 
 
 def parse_feed(

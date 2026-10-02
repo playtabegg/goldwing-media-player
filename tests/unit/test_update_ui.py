@@ -182,7 +182,7 @@ class TestTheInstallPath:
         monkeypatch.setattr(ui_mod, "launch_installer", lambda path, args: launched.append((path, args)))
         monkeypatch.setattr(ui_mod, "trusted_keys", lambda: [])
 
-        def fake_download(release, folder, pubs):
+        def fake_download(release, folder, pubs, **_how):
             path = folder / "wti-player-setup.exe"
             path.write_bytes(b"MZ")
             return path
@@ -222,7 +222,7 @@ class TestTheInstallPath:
         monkeypatch.setattr(tempfile, "mkdtemp", mkdtemp)
         monkeypatch.setattr(ui_mod, "trusted_keys", lambda: [])
 
-        def failing(release, folder, pubs):
+        def failing(release, folder, pubs, **_how):
             (folder / "half.exe").write_bytes(b"MZ")
             raise DownloadProblem("The download does not match the release\'s checksum.")
 

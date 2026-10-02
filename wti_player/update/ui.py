@@ -19,7 +19,7 @@ from .. import strings
 from .apply import launch_installer
 from .check import Outcome, check_for_update
 from .download import DownloadProblem, download_installer
-from .feed import Release
+from .feed import Release, Stopped
 from .keys import trusted_keys
 from .verify import is_ours
 
@@ -43,14 +43,17 @@ OnInstalled = Callable[[str], None]
 class UpdateCheck(QObject):
     _checked = pyqtSignal(object, int)
     _downloaded = pyqtSignal(object, int)
+    _progressed = pyqtSignal(int, int, int)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._generation = 0
         self._on_outcome: OnOutcome | None = None
         self._on_installed: OnInstalled | None = None
+        self._on_progress: Callable[[int, int], None] | None = None
         self._checked.connect(self._deliver)
         self._downloaded.connect(self._deliver_download)
+        self._progressed.connect(self._deliver_progress)
         self.busy = False
 
     def start(self, on_outcome: OnOutcome, *, check: Callable[[], Outcome] | None = None) -> None:
@@ -76,16 +79,23 @@ class UpdateCheck(QObject):
         job.setAutoDelete(True)
         _pool().start(job)
 
-    def install(self, release: Release, on_installed: OnInstalled) -> None:
+    def install(self, release: Release, on_installed: OnInstalled, on_progress: Callable[[int, int], None] | None = None) -> None:
         """Download, verify twice, hand to the installer. Off-thread; the
-        answer is one sentence, or the Player quits for the installer."""
+        answer is one sentence, or the Player quits for the installer.
+
+        ``on_progress(done, total)`` hears how far the download is, about once
+        a megabyte. :meth:`cancel` stops it: the read ends at its next piece
+        and what was fetched is thrown away."""
         if self.busy:
             return
         self.busy = True
         self._generation += 1
         generation = self._generation
         self._on_installed = on_installed
+        self._on_progress = on_progress
         signal = self._downloaded
+        progressed = self._progressed
+        owner = self
         pubs = trusted_keys()
 
         self._pending_release = release
@@ -95,11 +105,22 @@ class UpdateCheck(QObject):
                 folder: Path | None = None
                 try:
                     folder = Path(tempfile.mkdtemp(prefix="wti-player-update-"))
-                    path = download_installer(release, folder, pubs)
+                    told = [0]
+
+                    def progress(done: int, total: int) -> None:
+                        # About once a megabyte, and at the end: a signal a piece would flood the window.
+                        if done - told[0] >= 1024 * 1024 or (total and done >= total):
+                            told[0] = done
+                            progressed.emit(done, total, generation)
+
+                    path = download_installer(release, folder, pubs, progress=progress, stop=lambda: owner._generation != generation)
                     if not is_ours(path):
                         answer: object = strings.UPDATE_NOT_OURS
                     else:
                         answer = path
+                except Stopped:
+                    # Nobody is waiting: the delivery below is stale, and the folder goes with it.
+                    answer = ""
                 except DownloadProblem as problem:
                     answer = str(problem)
                 except Exception:
@@ -113,11 +134,16 @@ class UpdateCheck(QObject):
         _pool().start(job)
 
     def cancel(self) -> None:
-        """Drop whatever is in flight. Called when the window closes."""
+        """Drop whatever is in flight. Called when the window closes, and by Cancel on a download."""
         self._generation += 1
         self._on_outcome = None
         self._on_installed = None
+        self._on_progress = None
         self.busy = False
+
+    def _deliver_progress(self, done: int, total: int, generation: int) -> None:
+        if generation == self._generation and self._on_progress is not None:
+            self._on_progress(done, total)
 
     def _deliver(self, outcome: object, generation: int) -> None:
         if generation != self._generation:

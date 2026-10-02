@@ -300,7 +300,9 @@ class TestTheRealFetcher:
                 return "https://github.com/x/latest.json"
 
             def read(self, n):
-                return b"{}"
+                # A body, then the end: the fetch reads in pieces since 1.0.3.
+                body, self.body = getattr(self, "body", b"{}"), b""
+                return body
 
         def urlopen(request, timeout):
             seen["headers"] = dict(request.header_items())

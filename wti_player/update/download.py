@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from pathlib import Path
 
-from .feed import FeedProblem, Fetch, Release, fetch_bytes
+from .feed import FeedProblem, Fetch, Progress, Release, Stopped, fetch_bytes
 from .minisig import PublicKey, verify_any
 
 INSTALLER_NAME = "wti-player-setup.exe"
@@ -21,11 +22,23 @@ def download_installer(
     pubs: list[PublicKey],
     *,
     fetch: Fetch = fetch_bytes,
+    progress: Progress | None = None,
+    stop: Callable[[], bool] | None = None,
 ) -> Path:
     """The installer on disk, verified by size, SHA-256 and signature, or
-    :class:`DownloadProblem` and nothing left behind."""
+    :class:`DownloadProblem` and nothing left behind.
+
+    ``progress`` and ``stop`` are handed to the fetch when given (1.0.3: the
+    download says how far it is and can be stopped). A stopped download
+    raises :class:`~wti_player.update.feed.Stopped`, which is not a problem.
+    """
     try:
-        data = fetch(release.url, release.size)
+        if progress is not None or stop is not None:
+            data = fetch(release.url, release.size, progress=progress, stop=stop)  # type: ignore[call-arg]
+        else:
+            data = fetch(release.url, release.size)
+    except Stopped:
+        raise
     except FeedProblem as problem:
         raise DownloadProblem(str(problem)) from problem
     if len(data) != release.size:
