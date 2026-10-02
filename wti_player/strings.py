@@ -390,19 +390,22 @@ DISC_GETS_UPDATES = "This disc can get updates, from its own menu."
 DISC_HAS_CLOUD_SAVES = "Its menu can carry your saves to another computer with a Save Code."
 KEY_ON_LABEL = (
     "This copy's preservation key is printed on the disc label. "
-    "It marks the copy as yours. It is not a lock. More at wetheindies.com/editions."
+    "It names this one copy. It is not a lock. More at wetheindies.com/editions."
 )
 KEY_FACT = "Preservation key on the label"
 # The key is on the disc too (1.0.3; his word of 2 Oct 2026): said, and shown only when asked.
 KEY_ON_DISC = (
     "This copy has a preservation key. It is on the disc label, and on the disc itself: Show key reads it. "
-    "It marks the copy as yours. It is not a lock. More at wetheindies.com/editions."
+    "It names this one copy. It is not a lock. More at wetheindies.com/editions."
 )
 KEY_FACT_ON_DISC = "Preservation key on this disc"
 SHOW_KEY = "Show key"
 HIDE_KEY = "Hide key"
 COPY_KEY = "Copy"
-KEY_COPIED = "The key is copied. Goldwing keeps no note of it."
+KEY_COPIED = "The key is copied. Goldwing keeps no note of it; the clipboard holds it until you copy something else."
+# Said beside a key whose record We The Indies did not sign (a disc built on a machine without our key, or a copy
+# of a copy): the key is still shown, and what it proves is said plainly.
+KEY_NOT_SIGNED = "This record is not signed by We The Indies, so the disc alone does not prove the key. wetheindies.com/editions says which copy a key names."
 SOUNDTRACK_FACT = "Soundtrack CD in the case"
 
 

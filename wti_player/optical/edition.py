@@ -28,17 +28,31 @@ KNOWN_SCHEMA = 1
 MAX_DOCUMENT_BYTES = 64 * 1024
 
 #: A preservation key: twelve symbols of this alphabet (no 0, 1, 5, B, I, L, O, S), written in three groups of four.
-#: The site's own rule (lib/editions/key-format.ts); the last symbol is a check the site verifies, not the Player.
+#: The site's own rule (lib/editions/key-format.ts): the twelfth symbol is a check over the first eleven.
 KEY_ALPHABET = "2346789ACDEFGHJKMNPQRTUVWXYZ"
 KEY_SYMBOLS = 12
+
+
+def _check_symbol(body: str) -> str | None:
+    """The check symbol for eleven symbols (Luhn mod N, as the site and the factory compute it)."""
+    n = len(KEY_ALPHABET)
+    factor, total = 2, 0
+    for symbol in reversed(body):
+        value = KEY_ALPHABET.find(symbol)
+        if value < 0:
+            return None
+        addend = factor * value
+        total += addend // n + addend % n
+        factor = 1 if factor == 2 else 2
+    return KEY_ALPHABET[(n - total % n) % n]
 
 
 def clean_key(value: Any) -> str:
     """The key as it is printed, `7KQ4-M2XP-9D3A`, or "" when the value is not a key at all."""
     if not isinstance(value, str) or len(value) > 64:
         return ""
-    symbols = "".join(ch for ch in value.upper() if ch not in " -_.\u2010\u2011\u2012\u2013\u2014\t")
-    if len(symbols) != KEY_SYMBOLS or any(ch not in KEY_ALPHABET for ch in symbols):
+    symbols = "".join(ch for ch in value.upper() if not ch.isspace() and ch not in "-_.\u2010\u2011\u2012\u2013\u2014\u2015")
+    if len(symbols) != KEY_SYMBOLS or _check_symbol(symbols[:-1]) != symbols[-1]:
         return ""
     return "-".join(symbols[i : i + 4] for i in range(0, KEY_SYMBOLS, 4))
 

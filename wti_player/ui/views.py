@@ -917,6 +917,14 @@ class GameView(QWidget):
             widget.hide()
         key_row.addStretch(1)
         column.addLayout(key_row)
+        # Under the key, only while it is shown and only when the record is not signed by us.
+        self._key_signed = False
+        self.key_note = QLabel(strings.KEY_NOT_SIGNED)
+        self.key_note.setObjectName("note")
+        self.key_note.setWordWrap(True)
+        self.key_note.setMaximumWidth(560)
+        self.key_note.hide()
+        column.addWidget(self.key_note)
         header.addLayout(column, 1)
         # This page is wide and the text column stops at 560 px: without a stretch the spare width was shared out
         # between the cover and the name, and the cover sat alone in the middle of the page.
@@ -970,7 +978,17 @@ class GameView(QWidget):
         self.key_text.setText("" if showing else self._key)
         self.key_text.setVisible(not showing)
         self.key_copy.setVisible(not showing)
+        self.key_note.setVisible(not showing and not self._key_signed)
         self.key_button.setText(strings.SHOW_KEY if showing else strings.HIDE_KEY)
+
+    def forget(self) -> None:
+        """Leaving the page: the key is off the screen and out of the page's hands."""
+        self._key = ""
+        self._key_signed = False
+        self.key_text.setText("")
+        for widget in (self.key_text, self.key_copy, self.key_note, self.key_button):
+            widget.hide()
+        self.key_button.setText(strings.SHOW_KEY)
 
     def copy_key(self) -> None:
         """Copy: the key to the clipboard, and nowhere else."""
@@ -1014,11 +1032,9 @@ class GameView(QWidget):
         self.carries.setText("\n".join(carries))
         self.carries.setVisible(bool(carries))
         # A new disc on the page starts hidden again, whatever the last one showed.
+        self.forget()
         self._key = record.key if ours and record is not None else ""
-        self.key_text.setText("")
-        self.key_text.hide()
-        self.key_copy.hide()
-        self.key_button.setText(strings.SHOW_KEY)
+        self._key_signed = bool(record is not None and record.signed_by_us)
         self.key_button.setVisible(bool(self._key))
         self.menu_button.setVisible(ours and shelf.menu_executable(profile.root) is not None)
         cover = profile.art.cover

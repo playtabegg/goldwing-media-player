@@ -946,6 +946,8 @@ class MainWindow(QMainWindow):
         # disc somebody just walked away from straight back on the screen.
         self.reader.cancel()
         self.leave_dvd_menu(resume=False)
+        # A copy's key leaves with its page (Eject comes through here too).
+        self.game.forget()
         if self.preview_mode:
             self.set_preview_mode(False)
         if not keep_message:

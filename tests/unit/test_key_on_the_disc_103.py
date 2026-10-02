@@ -38,7 +38,7 @@ def _disc(folder: Path, record: dict | None) -> Path:
 
 
 def _record(**over) -> dict:
-    return {"schema": 1, "title": "Foxtail", "title_id": "x", "edition": "standard", "number": 7, "issued": "2026-10-02", "order_id": "o", "copy_index": 0, "signed": False, **over}
+    return {"schema": 1, "title": "Foxtail", "title_id": "x", "edition": "standard", "number": 7, "issued": "2026-10-02", "order_id": "o", "copy_index": 1, "signed": False, **over}
 
 
 def _profile(root: Path, *, ours: bool = True) -> DiscProfile:
@@ -57,7 +57,7 @@ class TestReadingTheKey:
         record = E.read(_disc(tmp_path, _record()))
         assert record is not None and record.key == "" and record.number == 7
 
-    @pytest.mark.parametrize("bad", ["", "7KQ4-M2XP-9D3", "7KQ4-M2XP-9D3AA", "0KQ4-M2XP-9D3A", "7KQ4-M2XP-9D3!", 7, None, ["7KQ4-M2XP-9D3A"], "A" * 200])
+    @pytest.mark.parametrize("bad", ["", "7KQ4-M2XP-9D3", "7KQ4-M2XP-9D3AA", "0KQ4-M2XP-9D3A", "7KQ4-M2XP-9D3!", "7KQ4-M2XP-9D3C", 7, None, ["7KQ4-M2XP-9D3A"], "A" * 200])
     def test_what_is_not_a_key_is_never_offered_as_one(self, tmp_path: Path, bad) -> None:
         record = E.read(_disc(tmp_path, _record(key=bad)))
         assert record is not None and record.key == ""
@@ -96,6 +96,36 @@ class TestTheButton:
         assert view.key_text.isHidden() and view.key_text.text() == "" and view.key_copy.isHidden()
         assert view.key_button.text() == strings.SHOW_KEY
 
+    def test_an_unsigned_record_says_so_under_the_key_and_a_signed_one_does_not(self, qt_app, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        view = self._view(qt_app)
+        view.show_disc(_profile(_disc(tmp_path / "unsigned", _record(key=KEY))))
+        assert view.key_note.isHidden()  # nothing is said before the key is asked for
+        view.key_button.click()
+        assert not view.key_note.isHidden() and view.key_note.text() == strings.KEY_NOT_SIGNED
+        view.key_button.click()
+        assert view.key_note.isHidden()
+        # Signed by an unknown key reads the same as unsigned: shown, and not vouched for.
+        monkeypatch.setattr(E, "trust_of", lambda _record, _trusted=None: E.UNTRUSTED)
+        view.show_disc(_profile(_disc(tmp_path / "untrusted", _record(key=KEY, signed=True))))
+        view.key_button.click()
+        assert view.key_text.text() == KEY and not view.key_note.isHidden()
+        # Signed by us: the key, and no caveat.
+        monkeypatch.setattr(E, "trust_of", lambda _record, _trusted=None: E.SIGNED)
+        view.show_disc(_profile(_disc(tmp_path / "signed", _record(key=KEY, signed=True))))
+        view.key_button.click()
+        assert view.key_text.text() == KEY and view.key_note.isHidden()
+
+    def test_leaving_the_page_takes_the_key_with_it(self, qt_app, tmp_path: Path) -> None:
+        view = self._view(qt_app)
+        view.show_disc(_profile(_disc(tmp_path, _record(key=KEY))))
+        view.key_button.click()
+        view.forget()
+        assert view._key == "" and view.key_text.text() == ""
+        assert all(w.isHidden() for w in (view.key_text, view.key_copy, view.key_note, view.key_button))
+        view.toggle_key()
+        view.copy_key()
+        assert view.key_text.text() == ""
+
     def test_copy_puts_the_key_on_the_clipboard_and_says_so_once(self, qt_app, tmp_path: Path) -> None:
         view = self._view(qt_app)
         said: list[bool] = []
@@ -109,7 +139,7 @@ class TestTheButton:
         view = self._view(qt_app)
         view.show_disc(_profile(_disc(tmp_path / "a", _record(key=KEY))))
         view.key_button.click()
-        view.show_disc(_profile(_disc(tmp_path / "b", _record(key="2346-789A-CDEF"))))
+        view.show_disc(_profile(_disc(tmp_path / "b", _record(key="2346-789A-CDEZ"))))
         assert view.key_text.isHidden() and view.key_text.text() == "" and view.key_button.text() == strings.SHOW_KEY
         # A record with no key (every disc made before): the key is on the label, and there is nothing to press.
         view.show_disc(_profile(_disc(tmp_path / "c", _record())))
@@ -144,4 +174,6 @@ class TestNoCopyNumberIsShown:
 
     def test_the_words_say_what_the_key_is_and_is_not(self) -> None:
         assert "not a lock" in strings.KEY_ON_DISC and "wetheindies.com/editions" in strings.KEY_ON_DISC
-        assert "keeps no note" in strings.KEY_COPIED
+        # A key that is only seen takes nothing: it names the copy, it does not make it anyone's.
+        assert "as yours" not in strings.KEY_ON_DISC and "as yours" not in strings.KEY_ON_LABEL
+        assert "keeps no note" in strings.KEY_COPIED and "clipboard" in strings.KEY_COPIED
