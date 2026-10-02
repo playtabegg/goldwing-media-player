@@ -5,8 +5,13 @@ is: the title, the edition, the number, the day it was issued. The factory
 signs it when it has a key; a record without a signature is still a number,
 shown as one, and the registry at ``/editions/<slug>/<n>`` is the proof.
 
-Read-only, never a gate. The Player shows the number in the inspector;
-Rook certifies it. A disc without a record plays exactly as before.
+Read-only, never a gate. A disc without a record plays exactly as before.
+
+Since 1.0.3 (his word of 2 Oct 2026) the record may also carry the copy's
+PRESERVATION KEY, the one printed on its label, so a copy whose label has
+worn or whose owner has lost the account can still say its key: the Player
+reads it here and shows it only when asked. It is never stored and never
+sent. A record made before that has no key, and nothing is offered.
 """
 
 from __future__ import annotations
@@ -21,6 +26,21 @@ from .meta import SEARCH_PATHS
 EDITION_NAME = ".wti_edition.json"
 KNOWN_SCHEMA = 1
 MAX_DOCUMENT_BYTES = 64 * 1024
+
+#: A preservation key: twelve symbols of this alphabet (no 0, 1, 5, B, I, L, O, S), written in three groups of four.
+#: The site's own rule (lib/editions/key-format.ts); the last symbol is a check the site verifies, not the Player.
+KEY_ALPHABET = "2346789ACDEFGHJKMNPQRTUVWXYZ"
+KEY_SYMBOLS = 12
+
+
+def clean_key(value: Any) -> str:
+    """The key as it is printed, `7KQ4-M2XP-9D3A`, or "" when the value is not a key at all."""
+    if not isinstance(value, str) or len(value) > 64:
+        return ""
+    symbols = "".join(ch for ch in value.upper() if ch not in " -_.\u2010\u2011\u2012\u2013\u2014\t")
+    if len(symbols) != KEY_SYMBOLS or any(ch not in KEY_ALPHABET for ch in symbols):
+        return ""
+    return "-".join(symbols[i : i + 4] for i in range(0, KEY_SYMBOLS, 4))
 
 #: The factory's edition keys, public halves, base64 (L4, 30 Aug 2026).
 #: Populated 11 Sep 2026 (§G) with the 32-byte key from wti-edition.pub, key
@@ -48,6 +68,9 @@ class DiscEdition:
     #: SIGNED, UNTRUSTED, UNSIGNED or BAD.
     trust: str = UNSIGNED
     source: Path | None = None
+    #: The copy's preservation key as printed, or "" when the record carries none (every disc before 1.0.3's
+    #: discs) or what it carries is not a key. Never from a record whose signature is false.
+    key: str = ""
 
     @property
     def signed_by_us(self) -> bool:
@@ -86,14 +109,17 @@ def read(root: Path | str) -> DiscEdition | None:
     number = raw.get("number")
     if not isinstance(number, int) or number < 1:
         return None
+    trust = trust_of(raw)
     return DiscEdition(
         title=str(raw.get("title") or ""),
         edition=str(raw.get("edition") or "standard"),
         number=number,
         issued=str(raw.get("issued") or ""),
         signed=bool(raw.get("signed")),
-        trust=trust_of(raw),
+        trust=trust,
         source=path,
+        # A record that says it is signed and is not has been altered: nothing in it is offered as a key.
+        key="" if trust == BAD else clean_key(raw.get("key")),
     )
 
 

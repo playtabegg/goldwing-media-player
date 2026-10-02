@@ -63,7 +63,8 @@ class TestReadEntry:
     def test_the_edition_line_rides_along_when_the_copy_came_from_a_numbered_disc(self, tmp_path: Path) -> None:
         entry = shelf.read_entry(copy_of(tmp_path / "numbered", "game", "Foxtail", edition=True))
         assert entry is not None
-        assert "7" in entry.edition_line
+        # That the copy has a key, never its number (his answer of 2 Oct 2026).
+        assert entry.edition_line == "Preservation key on the label" and "7" not in entry.edition_line
         assert entry.signed is False  # unsigned record: shown, never trusted
 
 

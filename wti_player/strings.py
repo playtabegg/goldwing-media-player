@@ -393,6 +393,16 @@ KEY_ON_LABEL = (
     "It marks the copy as yours. It is not a lock. More at wetheindies.com/editions."
 )
 KEY_FACT = "Preservation key on the label"
+# The key is on the disc too (1.0.3; his word of 2 Oct 2026): said, and shown only when asked.
+KEY_ON_DISC = (
+    "This copy has a preservation key. It is on the disc label, and on the disc itself: Show key reads it. "
+    "It marks the copy as yours. It is not a lock. More at wetheindies.com/editions."
+)
+KEY_FACT_ON_DISC = "Preservation key on this disc"
+SHOW_KEY = "Show key"
+HIDE_KEY = "Hide key"
+COPY_KEY = "Copy"
+KEY_COPIED = "The key is copied. Goldwing keeps no note of it."
 SOUNDTRACK_FACT = "Soundtrack CD in the case"
 
 
@@ -403,7 +413,7 @@ def soundtrack_line(title: str, tracks: int) -> str:
     return f"A soundtrack CD comes in the same case{name}{count}."
 
 
-def game_carries(*, online_updates: bool, cloud_saves: bool | None, soundtrack: tuple[str, int] | None, has_key: bool) -> list[str]:
+def game_carries(*, online_updates: bool, cloud_saves: bool | None, soundtrack: tuple[str, int] | None, has_key: bool, key_on_disc: bool = False) -> list[str]:
     """The lines under a game disc's note: what this disc carries, and nothing it does not."""
     lines: list[str] = []
     if online_updates:
@@ -413,7 +423,7 @@ def game_carries(*, online_updates: bool, cloud_saves: bool | None, soundtrack: 
     if soundtrack is not None:
         lines.append(soundtrack_line(*soundtrack))
     if has_key:
-        lines.append(KEY_ON_LABEL)
+        lines.append(KEY_ON_DISC if key_on_disc else KEY_ON_LABEL)
     return lines
 
 

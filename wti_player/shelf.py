@@ -24,6 +24,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import strings
 from .optical import edition as disc_edition
 from .optical import meta as disc_meta
 
@@ -106,7 +107,8 @@ def read_entry(root: Path | str) -> ShelfEntry | None:
     edition_line = ""
     signed = False
     if record is not None and record.number:
-        edition_line = record.line
+        # That the copy has a key, and where; never its number (his answer of 2 Oct 2026).
+        edition_line = strings.KEY_FACT_ON_DISC if record.key else strings.KEY_FACT
         signed = bool(record.signed)
     return ShelfEntry(
         root=folder,

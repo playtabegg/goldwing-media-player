@@ -317,11 +317,11 @@ class DiscHeader(QWidget):
         # carries one, and "signed by We The Indies" only when it verifies.
         record = disc_edition.read(profile.root)
         if record is not None and record.line:
-            facts.append(record.line)
+            # No copy number (his answer of 2 Oct 2026): only that the copy has a key, and where. The key itself is
+            # read and shown on the game's own page, when asked; nothing here stores one.
             if record.signed_by_us:
                 facts.append(shelf.SIGNED_BY_US)
-            # The key itself is on the label; the Player never reads or stores one (1.0.3).
-            facts.append(strings.KEY_FACT)
+            facts.append(strings.KEY_FACT_ON_DISC if record.key else strings.KEY_FACT)
         self.by.setText(" · ".join(by))
         self.by.setVisible(bool(by))
         self.facts.setText(" · ".join(facts))
@@ -854,6 +854,8 @@ class GameView(QWidget):
     go_home = pyqtSignal()
     open_menu = pyqtSignal()
     open_file = pyqtSignal(Path)
+    #: The key was put on the clipboard (the window says so, once).
+    key_copied = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -897,6 +899,24 @@ class GameView(QWidget):
         self.carries.setContentsMargins(0, 10, 0, 0)
         self.carries.hide()
         column.addWidget(self.carries)
+        # The copy's preservation key, read from the disc and shown only when asked (1.0.3; his word of 2 Oct 2026:
+        # a worn label or a lost account still leaves the key with the disc). Held for this page only.
+        self._key = ""
+        key_row = QHBoxLayout()
+        key_row.setContentsMargins(0, 8, 0, 0)
+        key_row.setSpacing(8)
+        self.key_button = QPushButton(strings.SHOW_KEY)
+        self.key_button.clicked.connect(self.toggle_key)
+        self.key_text = QLabel("")
+        self.key_text.setObjectName("body")
+        self.key_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.key_copy = QPushButton(strings.COPY_KEY)
+        self.key_copy.clicked.connect(self.copy_key)
+        for widget in (self.key_button, self.key_text, self.key_copy):
+            key_row.addWidget(widget)
+            widget.hide()
+        key_row.addStretch(1)
+        column.addLayout(key_row)
         header.addLayout(column, 1)
         # This page is wide and the text column stops at 560 px: without a stretch the spare width was shared out
         # between the cover and the name, and the cover sat alone in the middle of the page.
@@ -941,6 +961,28 @@ class GameView(QWidget):
         self._tail.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(self._tail, 1)
 
+    def toggle_key(self) -> None:
+        """Show key / Hide key: the key read from this disc, on the screen only while it is asked for."""
+        if not self._key:
+            return
+        # Hidden, not visible: a page that is itself off the screen has nothing "visible" on it.
+        showing = not self.key_text.isHidden()
+        self.key_text.setText("" if showing else self._key)
+        self.key_text.setVisible(not showing)
+        self.key_copy.setVisible(not showing)
+        self.key_button.setText(strings.SHOW_KEY if showing else strings.HIDE_KEY)
+
+    def copy_key(self) -> None:
+        """Copy: the key to the clipboard, and nowhere else."""
+        if not self._key:
+            return
+        from PyQt6.QtWidgets import QApplication
+
+        clipboard = QApplication.clipboard()
+        if clipboard is not None:
+            clipboard.setText(self._key)
+            self.key_copied.emit()
+
     def show_disc(self, profile: DiscProfile) -> None:
         ours = profile.ours
         chosen = profile.meta is not None and bool(profile.meta.title)
@@ -967,9 +1009,17 @@ class GameView(QWidget):
             cloud_saves=game.cloud_saves if game else None,
             soundtrack=(game.soundtrack.title, game.soundtrack.tracks) if game and game.soundtrack else None,
             has_key=ours and record is not None,
+            key_on_disc=bool(record and record.key),
         ) if ours else []
         self.carries.setText("\n".join(carries))
         self.carries.setVisible(bool(carries))
+        # A new disc on the page starts hidden again, whatever the last one showed.
+        self._key = record.key if ours and record is not None else ""
+        self.key_text.setText("")
+        self.key_text.hide()
+        self.key_copy.hide()
+        self.key_button.setText(strings.SHOW_KEY)
+        self.key_button.setVisible(bool(self._key))
         self.menu_button.setVisible(ours and shelf.menu_executable(profile.root) is not None)
         cover = profile.art.cover
         self.cover.setVisible(cover is not None)

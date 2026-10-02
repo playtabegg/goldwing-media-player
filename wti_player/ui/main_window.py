@@ -267,6 +267,7 @@ class MainWindow(QMainWindow):
         self.game = GameView()
         self.game.go_home.connect(self.show_welcome)
         self.game.open_menu.connect(self.open_game_menu_now)
+        self.game.key_copied.connect(lambda: self.report(strings.KEY_COPIED, tone="notice"))
         self.game.open_file.connect(self.open_from_browser)
         self.audio_cd = AudioCdView()
         self.audio_cd.play_track.connect(self.play_track)

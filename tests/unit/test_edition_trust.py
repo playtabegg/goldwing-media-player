@@ -62,7 +62,7 @@ def test_the_shelf_row_says_signed_only_when_it_verifies(tmp_path: Path, monkeyp
     (root / ".wti_meta.json").write_text(json.dumps({"schema": 1, "kind": "game", "title": "Foxtail", "author": "Playtable", "id": "x", "version": "1.0.0", "made_by": "We the Indies"}), encoding="utf-8")
     (root / ".wti_edition.json").write_text(json.dumps(signed_record()), encoding="utf-8")
     entry = shelf.read_entry(root)
-    assert entry is not None and "Copy 7" in entry.describe() and shelf.SIGNED_BY_US not in entry.describe()
+    assert entry is not None and "Copy 7" not in entry.describe() and "Preservation key on the label" in entry.describe() and shelf.SIGNED_BY_US not in entry.describe()
     monkeypatch.setattr(E, "TRUSTED_EDITION_KEYS_B64", (base64.b64encode(PUB).decode(),))
     entry = shelf.read_entry(root)
     assert entry is not None and entry.signed_by_us and entry.describe().endswith(shelf.SIGNED_BY_US)
