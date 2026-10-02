@@ -78,6 +78,9 @@ class VlcEngine:
     ) -> None:
         self._vlc: ModuleType = load_vlc()
         self._hardware_decoding = hardware_decoding
+        #: How the instance itself was started. The View menu's switch (1.0.3) changes the choice per disc opened;
+        #: an instance started in software needs to be told "any" to decode in hardware again.
+        self._instance_hardware = hardware_decoding
         self._listeners: list[EngineListener] = []
         self._state = PlaybackState.IDLE
         self._target: MediaTarget | None = None
@@ -271,6 +274,18 @@ class VlcEngine:
 
     # -- playback ----------------------------------------------------------
 
+    @property
+    def software_decoding(self) -> bool:
+        return not self._hardware_decoding
+
+    def set_software_decoding(self, on: bool) -> None:
+        """Decode in software from the next disc opened (View > Software decoding, 1.0.3).
+
+        Slower, and the fallback when a graphics card shows video wrong: green frames, blocks, a black picture
+        with sound. What is playing now keeps the decoder it started with.
+        """
+        self._hardware_decoding = not on
+
     def open(self, target: MediaTarget) -> None:
         self._target = target
         self._finished = False
@@ -282,6 +297,8 @@ class VlcEngine:
         media.add_option(":dvdnav-menu")
         if not self._hardware_decoding:
             media.add_option(":avcodec-hw=none")
+        elif not self._instance_hardware:
+            media.add_option(":avcodec-hw=any")
         for option in target.options:
             media.add_option(option)
         self._player.set_media(media)

@@ -359,6 +359,17 @@ class MainWindow(QMainWindow):
         self.preview_action = QAction(strings.PREVIEW_TITLE, self, checkable=True)
         self.preview_action.triggered.connect(self.set_preview_mode)
         view_menu.addAction(self.preview_action)
+        view_menu.addSeparator()
+        # The fallback for a graphics card that shows video wrong (the audit of 8 Sep 2026; his word of 2 Oct):
+        # remembered, and started with --no-hardware-decoding it is on for this run whatever was remembered.
+        self.software_action = QAction(strings.SOFTWARE_DECODING, self, checkable=True)
+        self.software_action.setToolTip(strings.SOFTWARE_DECODING_TIP)
+        self.software_action.setStatusTip(strings.SOFTWARE_DECODING_TIP)
+        if self.prefs.software_decoding():
+            self.engine.set_software_decoding(True)
+        self.software_action.setChecked(self.engine.software_decoding)
+        self.software_action.triggered.connect(self.set_software_decoding)
+        view_menu.addAction(self.software_action)
 
         help_menu = bar.addMenu("&Help")
         self._add(help_menu, strings.UPDATE_MENU, self.check_for_updates)
@@ -368,6 +379,7 @@ class MainWindow(QMainWindow):
         self.log_action.triggered.connect(self.set_logging)
         help_menu.addAction(self.log_action)
         self._add(help_menu, strings.HELP_DIAGNOSTICS, self.open_diagnostics_folder)
+        self._add(help_menu, strings.HELP_SUPPORT, self.write_to_us)
         help_menu.addSeparator()
         self._add(help_menu, strings.ABOUT_TITLE, self.show_about)
 
@@ -1476,6 +1488,18 @@ class MainWindow(QMainWindow):
             self.report(strings.LOG_FAILED)
             return
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
+    def set_software_decoding(self, on: bool) -> None:
+        """View > Software decoding: remembered, and used from the next disc opened."""
+        self.engine.set_software_decoding(bool(on))
+        self.prefs.set_software_decoding(bool(on))
+        self.software_action.setChecked(bool(on))
+        self.report(strings.SOFTWARE_DECODING_ON if on else strings.SOFTWARE_DECODING_OFF, tone="notice")
+
+    def write_to_us(self) -> None:
+        """Help > Write to us: the mail program, or the address in words when there is none."""
+        if not QDesktopServices.openUrl(QUrl(f"mailto:{strings.SUPPORT_EMAIL}")):
+            self.report(strings.SUPPORT_NO_MAIL, tone="notice")
 
     def show_about(self) -> None:
         box = QMessageBox(self)

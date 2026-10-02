@@ -63,6 +63,9 @@ def simple_disc(duration_ms: int = 90 * 60 * 1000) -> FakeDisc:
 class FakeEngine:
     """Implements :class:`~wti_player.engine.base.PlaybackEngine`."""
 
+    def set_software_decoding(self, on: bool) -> None:
+        self.software_decoding = bool(on)
+
     def __init__(self, disc: FakeDisc | None = None) -> None:
         self.disc = disc or FakeDisc()
         self.opened: list[MediaTarget] = []
@@ -75,6 +78,7 @@ class FakeEngine:
         self.navigations: list[NavAction] = []
         self.selected_button = 0
         self.released = False
+        self.software_decoding = False
 
         self._state = PlaybackState.IDLE
         self._position = 0

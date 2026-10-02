@@ -30,6 +30,8 @@ class Preferences(Protocol):
     def set_recent(self, paths: list[Path]) -> None: ...
     def shelf(self) -> list[Path]: ...
     def set_shelf(self, roots: list[Path]) -> None: ...
+    def software_decoding(self) -> bool: ...
+    def set_software_decoding(self, on: bool) -> None: ...
     def sync(self) -> None: ...
 
 
@@ -87,6 +89,7 @@ class MemoryPreferences:
         self._recent: list[Path] = []
         # W2: the folders on the shelf, local copies of discs.
         self._shelf: list[Path] = []
+        self._software_decoding = False
         self.synced = 0
 
     def geometry(self) -> bytes | None:
@@ -112,6 +115,12 @@ class MemoryPreferences:
 
     def set_shelf(self, roots: list[Path]) -> None:
         self._shelf = [Path(p) for p in roots][:MAX_SHELF]
+
+    def software_decoding(self) -> bool:
+        return self._software_decoding
+
+    def set_software_decoding(self, on: bool) -> None:
+        self._software_decoding = bool(on)
 
     def sync(self) -> None:
         self.synced += 1
@@ -163,6 +172,13 @@ class QtPreferences:
 
     def set_shelf(self, roots: list[Path]) -> None:
         self._settings.setValue("shelf/roots", [str(p) for p in roots][:MAX_SHELF])
+
+    def software_decoding(self) -> bool:
+        # The registry hands back "true" or "false" as text; anything else is off.
+        return str(self._settings.value("video/software_decoding", "false")).strip().lower() == "true"
+
+    def set_software_decoding(self, on: bool) -> None:
+        self._settings.setValue("video/software_decoding", "true" if on else "false")
 
     def sync(self) -> None:
         self._settings.sync()

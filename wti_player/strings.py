@@ -221,7 +221,8 @@ UNEXPECTED_PROBLEM = (
     "Something went wrong that Goldwing did not expect. Nothing on the disc "
     "was changed. Take the disc out and put it back in. If it keeps happening, "
     "choose Write a diagnostics log from the Help menu, do it again, and "
-    "Goldwing writes what happened to a file."
+    "Goldwing writes what happened to a file. Send that file to "
+    "support@wetheindies.com and we will look."
 )
 
 # -- menu preview mode -----------------------------------------------------
@@ -326,6 +327,18 @@ def update_progress(done: int, total: int) -> str:
     return f"Downloading the new Goldwing: {done // mb} MB"
 
 
+# -- writing to us, and the software decoding switch (1.0.3; his word of 2 Oct 2026) --
+SUPPORT_EMAIL = "support@wetheindies.com"
+HELP_SUPPORT = f"&Write to us: {SUPPORT_EMAIL}"
+SUPPORT_NO_MAIL = f"No mail program opened. Write to {SUPPORT_EMAIL} from wherever you send mail."
+SOFTWARE_DECODING = "&Software decoding"
+SOFTWARE_DECODING_TIP = (
+    "For video that shows green, blocky or black with sound: Goldwing decodes it itself instead of asking the "
+    "graphics card. Slower, and it uses more of the processor."
+)
+SOFTWARE_DECODING_ON = "Software decoding is on, from the next disc you open. Goldwing remembers it."
+SOFTWARE_DECODING_OFF = "Software decoding is off, from the next disc you open."
+
 HELP_LOG = "Write a &diagnostics log"
 HELP_DIAGNOSTICS = "Open the diagnostics &folder"
 LOG_ON = "Goldwing is writing what happens to a file until it closes. Do the thing that went wrong, then open the diagnostics folder from the Help menu."
@@ -360,6 +373,7 @@ def about_text() -> str:
         "<p>No account, no telemetry, no update nag. Goldwing checks for a "
         "new version only when you ask it to, from the Help menu, and keeps "
         "nothing about it.</p>"
+        f"<p>Stuck, or something looks wrong? Write to <b>{SUPPORT_EMAIL}</b>. A person answers.</p>"
         "<p style='color:#888'>Playback uses libVLC, © the VideoLAN team, and "
         "decoders from FFmpeg. This program is under the GNU General Public "
         "License v3, which means you are entitled to its source: "
