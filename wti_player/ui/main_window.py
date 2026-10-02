@@ -565,6 +565,8 @@ class MainWindow(QMainWindow):
         self.transport.show()
         self._chosen_title = None
         artwork.forget()
+        # The last copy's key does not sit on the screen while another disc is read (the re-read of 2 Oct).
+        self.game.forget()
         self.reader.read(path, label, lambda profile: self._on_disc_read(path, profile))
 
     def _on_disc_read(self, path: Path, profile: DiscProfile) -> None:

@@ -155,6 +155,37 @@ class TestTheButton:
         assert view.key_button.isHidden()
 
 
+class TestTheWindowLetsGoOfTheKey:
+    def _window(self):
+        from wti_player.engine.fake import FakeEngine, simple_disc
+        from wti_player.optical.drives import DriveWatcher, FakeScanner
+        from wti_player.optical.reader import ImmediateReader
+        from wti_player.ui.main_window import MainWindow
+        from wti_player.ui.prefs import MemoryPreferences
+
+        class NoGamepad:
+            available = False
+
+            def read(self):
+                return None
+
+        watcher = DriveWatcher(FakeScanner())
+        watcher.poll()
+        return MainWindow(FakeEngine(simple_disc()), watcher=watcher, gamepad=NoGamepad(), reader=ImmediateReader(), prefs=MemoryPreferences())
+
+    def test_going_home_and_opening_another_disc_both_take_the_key_off_the_page(self, qt_app, tmp_path: Path) -> None:
+        window = self._window()
+        try:
+            for leave in (window.show_welcome, lambda: window.open_path(tmp_path / "nothing-here")):
+                window.game.show_disc(_profile(_disc(tmp_path / "copy", _record(key=KEY))))
+                window.game.key_button.click()
+                assert window.game.key_text.text() == KEY
+                leave()
+                assert window.game._key == "" and window.game.key_text.text() == "" and window.game.key_text.isHidden()
+        finally:
+            window.close()
+
+
 class TestNoCopyNumberIsShown:
     def test_the_header_says_the_copy_has_a_key_and_where_never_its_number(self, qt_app, tmp_path: Path) -> None:
         from wti_player.ui.views import DiscHeader
