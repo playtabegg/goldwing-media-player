@@ -38,6 +38,9 @@ class OpticalDrive:
     label: str = ""
     #: ``UDF``, ``CDFS``, ``ISO9660``... empty when nothing is mounted.
     filesystem: str = ""
+    #: A disc is in the drive and Windows cannot read it (scratched, blank,
+    #: or a format it does not know). Not the same as an empty tray.
+    unreadable: bool = False
 
     @property
     def letter(self) -> str:
@@ -56,6 +59,8 @@ class OpticalDrive:
         return self.mount
 
     def describe(self) -> str:
+        if self.unreadable:
+            return f"{self.description or self.mount} · a disc that cannot be read"
         if not self.has_media:
             return f"{self.description or self.mount} · empty"
         return f"{self.description or self.mount} · {self.label or 'untitled disc'}"
@@ -91,6 +96,11 @@ class FakeScanner:
     def eject(self, mount: str) -> None:
         self._replace(mount, has_media=False, label="", filesystem="")
 
+    def eject_media(self, mount: str) -> bool:
+        """What the Eject button does: here, the fake tray opens."""
+        self.eject(mount)
+        return True
+
     def _replace(self, mount: str, **changes: object) -> None:
         for index, drive in enumerate(self._drives):
             if drive.mount == mount:
@@ -99,8 +109,23 @@ class FakeScanner:
         raise KeyError(f"no fake drive at {mount}")
 
 
+#: ``GetLastError`` after a failed ``GetVolumeInformationW`` on an empty tray.
+_ERROR_NOT_READY = 21
+
+
+def unreadable_error(code: int) -> bool:
+    """Does this Windows error mean "a disc is there and cannot be read"?
+
+    An empty tray answers ``ERROR_NOT_READY``. Anything else from a drive
+    that exists is a disc Windows could not mount: ``ERROR_UNRECOGNIZED_VOLUME``
+    for a blank or foreign disc, ``ERROR_CRC`` and its kin for a scratched one.
+    Zero is "no error was recorded", which is not evidence of a disc.
+    """
+    return code not in (0, _ERROR_NOT_READY)
+
+
 def _scan_windows() -> list[OpticalDrive]:
-    kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
     # Stop Windows popping "There is no disc in the drive" at the user while
     # we are the ones asking. SEM_FAILCRITICALERRORS.
     previous = kernel32.SetErrorMode(0x0001)
@@ -115,6 +140,7 @@ def _scan_windows() -> list[OpticalDrive]:
                 continue
             label_buffer = ctypes.create_unicode_buffer(261)
             fs_buffer = ctypes.create_unicode_buffer(261)
+            ctypes.set_last_error(0)  # type: ignore[attr-defined]
             ok = kernel32.GetVolumeInformationW(
                 mount,
                 label_buffer,
@@ -132,6 +158,7 @@ def _scan_windows() -> list[OpticalDrive]:
                     has_media=bool(ok),
                     label=label_buffer.value if ok else "",
                     filesystem=fs_buffer.value if ok else "",
+                    unreadable=not ok and unreadable_error(ctypes.get_last_error()),  # type: ignore[attr-defined]
                 )
             )
         return drives
@@ -171,6 +198,45 @@ class SystemScanner:
             return _scan_windows()
         return _scan_posix()
 
+    def eject_media(self, mount: str) -> bool:
+        """Open the tray of the drive at ``mount``. Windows only, for now."""
+        if sys.platform == "win32":
+            return _eject_windows(mount)
+        return False
+
+
+def _eject_windows(mount: str) -> bool:
+    r"""Ask Windows to open the tray of ``E:\``. False on any refusal.
+
+    The order is the documented one: lock the volume, dismount it, allow
+    removal, eject. A volume something else still has open cannot be locked;
+    then nothing is forced and the caller tells the person to use the button.
+    """
+    if len(mount) < 2 or mount[1] != ":":
+        return False
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    kernel32.CreateFileW.restype = ctypes.c_void_p
+    generic_read, share_read_write, open_existing = 0x80000000, 0x00000003, 3
+    handle = kernel32.CreateFileW(rf"\\.\{mount[0]}:", generic_read, share_read_write, None, open_existing, 0, None)
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        return False
+    returned = ctypes.c_ulong(0)
+
+    def control(code: int, buffer: object = None, size: int = 0) -> bool:
+        return bool(kernel32.DeviceIoControl(ctypes.c_void_p(handle), code, buffer, size, None, 0, ctypes.byref(returned), None))
+
+    try:
+        fsctl_lock_volume, fsctl_dismount_volume = 0x00090018, 0x00090020
+        ioctl_media_removal, ioctl_eject_media = 0x002D4804, 0x002D4808
+        if not control(fsctl_lock_volume):
+            return False
+        control(fsctl_dismount_volume)
+        allow_removal = ctypes.c_ubyte(0)
+        control(ioctl_media_removal, ctypes.byref(allow_removal), 1)
+        return control(ioctl_eject_media)
+    finally:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
+
 
 class DriveEventKind(Enum):
     APPEARED = "appeared"
@@ -204,6 +270,16 @@ class DriveWatcher:
 
     def find(self, mount: str) -> OpticalDrive | None:
         return self._known.get(mount)
+
+    def eject(self, mount: str) -> bool:
+        """Open the drive's tray. False when the scanner cannot, or the drive refuses."""
+        opener = getattr(self._scanner, "eject_media", None)
+        if opener is None:
+            return False
+        try:
+            return bool(opener(mount))
+        except OSError:
+            return False
 
     def poll(self) -> list[DriveEvent]:
         """Rescan and report what changed since last time.

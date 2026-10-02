@@ -227,10 +227,9 @@ def _identify_blu_ray(root: Path, bdmv: Path, label: str) -> DiscProfile:
     unseekable = _clips_without_seek_index(bdmv, clips, referenced)
     if unseekable:
         refuses = True
-        problem = (
-            "This disc's seek index is damaged, so Goldwing will not open it. "
-            "That usually means the disc is scratched or the copy is incomplete."
-        )
+        from .. import strings
+
+        problem = strings.DAMAGED_INDEX
         notes.append("clips with no entry-point map: " + ", ".join(sorted(unseekable)))
 
     feature = mpls.main_feature(playlists)

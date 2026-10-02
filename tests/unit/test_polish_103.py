@@ -1,0 +1,168 @@
+"""1.0.3, the polish pass: what a customer hits first.
+
+Each test holds one item of the audit of 8 Sep 2026 that still stood in
+1.0.2: the window fits the screen, Eject ejects, a disc that cannot be read
+is not called an empty drive, one of our own discs is never called a locked
+commercial DVD, a download nobody is waiting for is removed, and the About
+box says where the source is.
+"""
+
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+
+import pytest
+from PyQt6.QtWidgets import QApplication
+
+from wti_player import strings
+from wti_player.engine.fake import FakeEngine, simple_disc
+from wti_player.optical import drives as drives_module
+from wti_player.optical import meta as disc_meta
+from wti_player.optical.drives import DriveWatcher, FakeScanner, OpticalDrive, unreadable_error
+from wti_player.optical.identify import DiscKind, DiscProfile
+from wti_player.optical.reader import ImmediateReader
+from wti_player.ui import fit
+from wti_player.ui.main_window import MainWindow
+from wti_player.ui.prefs import MemoryPreferences
+from wti_player.update import ui as update_ui
+
+MOUNT = "Q:\\"
+
+
+@pytest.fixture(scope="session")
+def qt_app():
+    return QApplication.instance() or QApplication([])
+
+
+class _NoGamepad:
+    available = False
+
+    def read(self):
+        return None
+
+
+class _StuckScanner(FakeScanner):
+    """A drive whose tray will not open by itself."""
+
+    def eject_media(self, mount: str) -> bool:
+        return False
+
+
+def _window(scanner: FakeScanner) -> MainWindow:
+    watcher = DriveWatcher(scanner)
+    watcher.poll()
+    return MainWindow(FakeEngine(simple_disc()), watcher=watcher, gamepad=_NoGamepad(), reader=ImmediateReader(), prefs=MemoryPreferences())
+
+
+def _disc_in_drive() -> FakeScanner:
+    return FakeScanner([OpticalDrive(mount=MOUNT, description="Disc drive (Q:)", has_media=True, label="FILM")])
+
+
+class TestTheWindowFitsTheScreen:
+    def test_a_large_screen_gets_the_design_size(self) -> None:
+        assert fit.fit_size(1920, 1040) == (1180, 720)
+
+    def test_a_scaled_laptop_gets_a_window_that_is_all_on_the_screen(self) -> None:
+        # 1366 x 768 at 125 percent, less the taskbar.
+        width, height = fit.fit_size(1093, 574)
+        assert width <= 1093 - fit.FRAME_WIDTH and height <= 574 - fit.FRAME_HEIGHT
+
+    def test_a_screen_that_reports_nothing_leaves_the_size_alone(self) -> None:
+        assert fit.fit_size(0, 0) == (1180, 720)
+
+
+class TestEjectOpensTheDrive:
+    def test_a_disc_from_a_drive_is_ejected_and_the_person_is_told(self, qt_app) -> None:
+        scanner = _disc_in_drive()
+        window = _window(scanner)
+        try:
+            window.profile = DiscProfile(kind=DiscKind.DVD_VIDEO, root=Path(MOUNT))
+            window.eject()
+            assert scanner.scan()[0].has_media is False
+            assert strings.EJECTED in window.banner._label.text()
+        finally:
+            window.close()
+
+    def test_a_drive_that_will_not_open_names_its_own_button(self, qt_app) -> None:
+        window = _window(_StuckScanner([OpticalDrive(mount=MOUNT, has_media=True)]))
+        try:
+            window.profile = DiscProfile(kind=DiscKind.DVD_VIDEO, root=Path(MOUNT))
+            window.eject()
+            assert strings.EJECT_BY_HAND in window.banner._label.text()
+        finally:
+            window.close()
+
+    def test_a_folder_has_no_tray_and_no_drive_is_touched(self, qt_app, tmp_path: Path) -> None:
+        scanner = _disc_in_drive()
+        window = _window(scanner)
+        try:
+            window.profile = DiscProfile(kind=DiscKind.DVD_VIDEO, root=tmp_path)
+            window.eject()
+            assert scanner.scan()[0].has_media is True
+        finally:
+            window.close()
+
+    def test_a_scanner_that_cannot_eject_says_no_and_does_not_raise(self) -> None:
+        class Bare:
+            def scan(self) -> list[OpticalDrive]:
+                return [OpticalDrive(mount=MOUNT, has_media=True)]
+
+        assert DriveWatcher(Bare()).eject(MOUNT) is False
+
+    def test_the_real_ejector_refuses_anything_that_is_not_a_drive_letter(self) -> None:
+        assert drives_module._eject_windows("") is False
+        assert drives_module._eject_windows("/mnt/disc") is False
+
+
+class TestADiscThatCannotBeRead:
+    def test_only_not_ready_is_an_empty_tray(self) -> None:
+        assert unreadable_error(21) is False  # ERROR_NOT_READY: nothing in the drive
+        assert unreadable_error(0) is False  # no error recorded is no evidence of a disc
+        assert unreadable_error(1005) is True  # ERROR_UNRECOGNIZED_VOLUME
+        assert unreadable_error(23) is True  # ERROR_CRC
+
+    def test_the_drive_says_so_and_not_empty(self) -> None:
+        drive = OpticalDrive(mount=MOUNT, description="Disc drive (Q:)", unreadable=True)
+        assert drive.describe() == "Disc drive (Q:) · a disc that cannot be read"
+        assert OpticalDrive(mount=MOUNT, description="Disc drive (Q:)").describe() == "Disc drive (Q:) · empty"
+
+
+class TestOurOwnDiscIsNeverCalledLocked:
+    def test_a_dvd_with_our_document_is_not_copy_protection(self, qt_app, tmp_path: Path) -> None:
+        window = _window(FakeScanner())
+        try:
+            window._playing_started = False
+            window.profile = DiscProfile(kind=DiscKind.DVD_VIDEO, root=tmp_path)
+            assert window._looks_like_css() is True
+            window.profile = DiscProfile(kind=DiscKind.DVD_VIDEO, root=tmp_path, meta=disc_meta.DiscMeta(title="Nosferatu", made_by="We the Indies"))
+            assert window._looks_like_css() is False
+        finally:
+            window.close()
+
+    def test_the_damaged_disc_words_say_what_to_try(self) -> None:
+        assert "soft cloth" in strings.DAMAGED_INDEX
+
+
+class TestADownloadNobodyWaitsFor:
+    def test_its_folder_is_removed(self) -> None:
+        folder = Path(tempfile.mkdtemp(prefix="wti-player-update-"))
+        installer = folder / "GoldwingMediaPlayer-Setup.exe"
+        installer.write_bytes(b"MZ")
+        update_ui._discard(installer)
+        assert not folder.exists()
+
+    def test_nothing_else_is_ever_removed(self, tmp_path: Path) -> None:
+        keep = tmp_path / "film.iso"
+        keep.write_bytes(b"x")
+        update_ui._discard(keep)
+        update_ui._discard("The update could not be downloaded.")
+        update_ui._discard(None)
+        assert keep.exists()
+
+
+class TestTheAboutBox:
+    def test_it_says_where_the_source_is(self) -> None:
+        text = strings.about_text()
+        assert "github.com/playtabegg/goldwing-media-player" in text
+        assert "<b>licences</b> folder" in text

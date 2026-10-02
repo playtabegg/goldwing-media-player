@@ -25,6 +25,7 @@ from wti_player import strings
 from wti_player.engine.fake import FakeEngine, simple_disc
 from wti_player.optical.drives import DriveWatcher, FakeScanner, OpticalDrive
 from wti_player.optical.reader import ImmediateReader
+from wti_player.ui import fit
 from wti_player.ui.main_window import MainWindow
 from wti_player.ui.prefs import MAX_RECENT, MemoryPreferences, is_rememberable, remember
 
@@ -152,7 +153,9 @@ class TestRememberedShapeAndVolume:
             assert window._volume == 100
             assert window.engine.volume == 100
             assert window.transport._volume_button.accessibleName() == "Mute"
-            assert window.width() == 1180
+            # The design size, or the screen's free area when that is smaller (1.0.3).
+            free = window.screen().availableGeometry()
+            assert window.width() == fit.fit_size(free.width(), free.height())[0]
         finally:
             window.close()
 

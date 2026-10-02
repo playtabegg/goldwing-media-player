@@ -103,6 +103,8 @@ LEAVE_FULL_SCREEN = "Leave full screen"
 HIDE_PANEL = "Hide the panel"
 SHOW_PANEL = "Show the panel"
 EJECT = "Eject"
+EJECTED = "The drive is open. Take the disc out, or put another one in."
+EJECT_BY_HAND = "Playback stopped. This drive would not open by itself: use the button on the drive."
 OPEN_RECENT = "Open &recent"
 RECENT_EMPTY = "Nothing opened by hand yet"
 CLEAR_RECENT = "Forget these"
@@ -343,8 +345,9 @@ def about_text() -> str:
         "nothing about it.</p>"
         "<p style='color:#888'>Playback uses libVLC, © the VideoLAN team, and "
         "decoders from FFmpeg. This program is under the GNU General Public "
-        "License v3, which means you are entitled to its source. The full "
-        "terms are in <b>licences</b>, beside the program.</p>"
+        "License v3, which means you are entitled to its source: "
+        "github.com/playtabegg/goldwing-media-player. The full terms are in "
+        "the <b>licences</b> folder, beside the program.</p>"
     )
 
 

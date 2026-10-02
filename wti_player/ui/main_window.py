@@ -41,7 +41,7 @@ from ..optical.drives import DriveEventKind, DriveWatcher
 from ..optical.identify import DiscKind, DiscProfile
 from ..optical.reader import DiscReader, ThreadedReader
 from ..version import window_title
-from . import artwork, theme, views
+from . import artwork, fit, theme, views
 from .menu_surface import MenuSurface
 from .prefs import IMAGE_SUFFIXES, Preferences, QtPreferences, remember
 from .preview import PreviewPanel
@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(window_title())
         self.setWindowIcon(theme.window_icon())
-        self.resize(1180, 720)
+        self.resize(*self._default_size())
         self.setAcceptDrops(True)
 
         self._build_ui()
@@ -997,10 +997,30 @@ class MainWindow(QMainWindow):
         self.engine.stop()
         self.transport.set_state(PlaybackState.STOPPED)
 
+    def _default_size(self) -> tuple[int, int]:
+        """The design size, or the screen's free area when that is smaller."""
+        screen = self.screen()
+        if screen is None:
+            return fit.DEFAULT_WIDTH, fit.DEFAULT_HEIGHT
+        free = screen.availableGeometry()
+        return fit.fit_size(free.width(), free.height())
+
     def eject(self) -> None:
+        """Stop, let go of the disc, and open the drive it came from.
+
+        A folder or an image has no tray, so only a disc from a drive the
+        watcher knows is ejected. When the drive will not open (it is busy,
+        or it has no motor), say so and name the button on the drive.
+        """
+        drive = self.watcher.find(str(self.profile.root)) if self.profile is not None else None
         self.stop()
         self.show_welcome()
-        self.report("Playback stopped. Use the drive's own button to open it.", tone="notice")
+        if drive is None:
+            return
+        if self.watcher.eject(drive.mount):
+            self.report(strings.EJECTED, tone="notice")
+        else:
+            self.report(strings.EJECT_BY_HAND, tone="notice")
 
     def toggle_fullscreen(self) -> None:
         if not self.isFullScreen() and not self._has_picture():
@@ -1290,6 +1310,12 @@ class MainWindow(QMainWindow):
         question calls an hour of successful playback a scrambled disc.
         """
         if self.profile is None or self.profile.kind is not DiscKind.DVD_VIDEO:
+            return False
+        # A disc that carries our own document was made by Rialto, and Rialto
+        # never scrambles one. Whatever stopped it, it is not copy protection
+        # (audit of 8 Sep 2026, PLAYERUX-3: a scratched disc of ours was
+        # called a locked commercial DVD).
+        if self.profile.meta is not None:
             return False
         try:
             if not self.profile.root.exists():

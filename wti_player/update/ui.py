@@ -129,10 +129,15 @@ class UpdateCheck(QObject):
 
     def _deliver_download(self, answer: object, generation: int) -> None:
         if generation != self._generation:
+            # The window closed, or another check began, while this one was
+            # downloading. Nobody will run the installer, so it does not stay
+            # in the temp folder (audit of 8 Sep 2026, PLAYERUX-21).
+            _discard(answer)
             return
         self.busy = False
         callback, self._on_installed = self._on_installed, None
         if callback is None:
+            _discard(answer)
             return
         if isinstance(answer, Path):
             release = getattr(self, "_pending_release", None)
@@ -145,3 +150,9 @@ class UpdateCheck(QObject):
             callback(strings.UPDATE_INSTALLING)
             return
         callback(str(answer))
+
+
+def _discard(answer: object) -> None:
+    """Remove a downloaded installer's folder. Anything that is not one is left alone."""
+    if isinstance(answer, Path) and answer.parent.name.startswith("wti-player-update-"):
+        shutil.rmtree(answer.parent, ignore_errors=True)
