@@ -292,3 +292,55 @@ class TestTheDiagnosticsLogIsReachableFromHelp:
     def test_the_words_no_longer_send_anyone_to_a_command_line(self) -> None:
         assert "--log" not in strings.UNEXPECTED_PROBLEM
         assert "Help menu" in strings.UNEXPECTED_PROBLEM
+
+
+class TestTheDriveCheckIsOffTheInterfaceThread:
+    def test_a_scan_and_what_changed_are_two_steps(self) -> None:
+        scanner = FakeScanner([OpticalDrive(mount=MOUNT, has_media=False)])
+        watcher = DriveWatcher(scanner)
+        assert watcher.slow is False  # a scanner a test drives answers at once
+        assert DriveWatcher().slow is True  # the real one asks the machine
+        assert [e.kind.value for e in watcher.apply(watcher.scan())] == ["appeared"]
+        scanner.insert(MOUNT, label="FILM")
+        scanned = watcher.scan()
+        assert watcher.find(MOUNT).has_media is False  # a scan alone changes nothing the window reads
+        assert [e.kind.value for e in watcher.apply(scanned)] == ["inserted"]
+        assert watcher.poll() == []
+
+    def test_a_slow_scan_runs_on_a_worker_and_one_at_a_time(self, qt_app) -> None:
+        import threading
+
+        from PyQt6.QtCore import QThreadPool
+
+        gate = threading.Event()
+        threads: list[int] = []
+
+        class SlowWatcher(DriveWatcher):
+            slow = True
+
+            def scan(self) -> list[OpticalDrive]:
+                threads.append(threading.get_ident())
+                gate.wait(5)
+                return [OpticalDrive(mount=MOUNT, description="Disc drive (Q:)", has_media=False)]
+
+        watcher = SlowWatcher(FakeScanner())
+        window = MainWindow(FakeEngine(simple_disc()), watcher=watcher, gamepad=_NoGamepad(), reader=ImmediateReader(), prefs=MemoryPreferences())
+        try:
+            window._drive_timer.stop()
+            # The window's own first check, made as it opened, is let through and finished.
+            gate.set()
+            QThreadPool.globalInstance().waitForDone(5000)
+            qt_app.processEvents()
+            gate.clear()
+            threads.clear()
+            window.poll_drives()
+            window.poll_drives()  # the first is still asking: this one is skipped, not queued
+            gate.set()
+            QThreadPool.globalInstance().waitForDone(5000)
+            qt_app.processEvents()
+            assert len(threads) == 1 and threads[0] != threading.get_ident()
+            assert watcher.find(MOUNT) is not None
+            assert window._scanning_drives is False
+        finally:
+            gate.set()
+            window.close()

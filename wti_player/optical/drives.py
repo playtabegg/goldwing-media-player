@@ -281,6 +281,18 @@ class DriveWatcher:
         except OSError:
             return False
 
+    @property
+    def slow(self) -> bool:
+        """Does a scan ask the machine itself? Then it can take seconds (a
+        drive spinning up answers when it is ready) and belongs off the
+        interface thread. A scanner a test drives by hand answers at once."""
+        return isinstance(self._scanner, SystemScanner)
+
+    def scan(self) -> list[OpticalDrive]:
+        """The slow half of :meth:`poll`: ask what is in the drives. Touches
+        nothing of the watcher's own, so it is safe on a worker thread."""
+        return self._scanner.scan()
+
     def poll(self) -> list[DriveEvent]:
         """Rescan and report what changed since last time.
 
@@ -288,8 +300,12 @@ class DriveWatcher:
         already in one as ``INSERTED``, so start-up and insertion take the
         same path through the app.
         """
+        return self.apply(self.scan())
+
+    def apply(self, drives: list[OpticalDrive]) -> list[DriveEvent]:
+        """The quick half of :meth:`poll`: what changed, given a scan."""
         events: list[DriveEvent] = []
-        current = {drive.mount: drive for drive in self._scanner.scan()}
+        current = {drive.mount: drive for drive in drives}
 
         for mount, drive in current.items():
             previous = self._known.get(mount)

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtCore import QRunnable, Qt, QThreadPool, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QAction, QDesktopServices, QDragEnterEvent, QDropEvent, QKeyEvent
 from PyQt6.QtWidgets import (
     QFileDialog,
@@ -96,6 +96,8 @@ class MainWindow(QMainWindow):
     #: running, so every engine event crosses back onto the GUI thread here
     #: before anything looks at it.
     engine_event = pyqtSignal(object)
+    #: A drive scan made off the interface thread, handed back to it.
+    _drives_scanned = pyqtSignal(object)
 
     def __init__(
         self,
@@ -174,6 +176,8 @@ class MainWindow(QMainWindow):
         # left on AutoText turns those into a document that fetches files.
         views.keep_labels_plain(self)
 
+        self._scanning_drives = False
+        self._drives_scanned.connect(self._on_drives_scanned)
         self.engine_event.connect(self._on_engine_event, Qt.ConnectionType.QueuedConnection)
         self.engine.add_listener(self.engine_event.emit)
         saved_volume = self.prefs.volume()
@@ -438,10 +442,44 @@ class MainWindow(QMainWindow):
     # -- opening things ----------------------------------------------------
 
     def poll_drives(self) -> None:
-        try:
-            events = self.watcher.poll()
-        except OSError:
+        """What is in the drives now, and what to do about it.
+
+        Asking Windows can take seconds while a drive spins up, and the timer
+        fires on the interface thread: the window froze for as long (audit of
+        8 Sep 2026, PLAYERUX-15). The real scan now runs on a worker; one at
+        a time, so a slow drive makes the next tick skip rather than queue.
+        """
+        if not self.watcher.slow:
+            try:
+                drives = self.watcher.scan()
+            except OSError:
+                return
+            self._apply_drive_scan(drives)
             return
+        if self._scanning_drives:
+            return
+        self._scanning_drives = True
+        watcher, scanned = self.watcher, self._drives_scanned
+
+        class _Scan(QRunnable):
+            def run(self) -> None:
+                try:
+                    drives: object = watcher.scan()
+                except OSError:
+                    drives = None
+                scanned.emit(drives)
+
+        job = _Scan()
+        job.setAutoDelete(True)
+        (QThreadPool.globalInstance() or QThreadPool(self)).start(job)
+
+    def _on_drives_scanned(self, drives: object) -> None:
+        self._scanning_drives = False
+        if drives is not None and not self._closing:
+            self._apply_drive_scan(drives)  # type: ignore[arg-type]
+
+    def _apply_drive_scan(self, drives: list) -> None:
+        events = self.watcher.apply(drives)
         self.welcome.set_drives(self.watcher.drives)
         for event in events:
             if event.kind is DriveEventKind.INSERTED:
