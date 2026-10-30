@@ -418,7 +418,19 @@ class WelcomeView(QWidget):
         buttons.addStretch(1)
         column.addLayout(buttons)
 
-        layout.addLayout(column)
+        # Held to 560 px, the widest thing in it, as the game page's text column is: the buttons' stretch let the
+        # bare layout grow wider, the words' height was worked out for that wider line, and on a wide window the
+        # welcome's second line was cut in half (in 1.0.2 too; found 30 Oct 2026).
+        # In a row with the spare width beside it, so the left side keeps its 1.0.2 width and the resting disc its place;
+        # a spacer or an alignment in `layout` itself would bring the cut-off line back.
+        text_column = QWidget()
+        text_column.setMaximumWidth(560)
+        text_column.setLayout(column)
+        text_row = QHBoxLayout()
+        text_row.setContentsMargins(0, 0, 0, 0)
+        text_row.addWidget(text_column, 1)
+        text_row.addStretch()
+        layout.addLayout(text_row)
         layout.addStretch(3)
         across.addLayout(layout, 3)
 
@@ -925,7 +937,13 @@ class GameView(QWidget):
         self.key_note.setMaximumWidth(560)
         self.key_note.hide()
         column.addWidget(self.key_note)
-        header.addLayout(column, 1)
+        # The column is a widget held to the labels' own 560 px. As a bare layout it could be given more width than
+        # its labels take, their height was then worked out for that wider line, and the last line of a wrapped label
+        # (the explanation, what the disc carries) was cut off on any window over about 1,150 px (30 Oct 2026).
+        text_column = QWidget()
+        text_column.setMaximumWidth(560)
+        text_column.setLayout(column)
+        header.addWidget(text_column, 1)
         # This page is wide and the text column stops at 560 px: without a stretch the spare width was shared out
         # between the cover and the name, and the cover sat alone in the middle of the page.
         header.addStretch(1)
