@@ -38,7 +38,7 @@ from ..inputs.actions import SKIP_MS, VOLUME_STEP, PlayerAction
 from ..inputs.gamepad import GamepadSource, XInputReader
 from ..inputs.keymap import action_for
 from ..optical.drives import DriveEventKind, DriveWatcher
-from ..optical.identify import DiscKind, DiscProfile
+from ..optical.identify import DiscKind, DiscProfile, album_copy_tracks
 from ..optical.reader import DiscReader, ThreadedReader
 from ..version import window_title
 from . import artwork, fit, theme, views
@@ -148,6 +148,8 @@ class MainWindow(QMainWindow):
         #: and no titles the engine will talk about, so this is the only
         #: record of where on the disc we are.
         self._track = 0
+        #: An album's locker copy on the audio CD page: its WAVs, one per track, played as files. Empty for a disc.
+        self._album_copy: list[Path] = []
         #: Set in closeEvent. A worker's answer can still be queued when
         #: the window goes, and acting on it means driving a released
         #: engine.
@@ -635,6 +637,7 @@ class MainWindow(QMainWindow):
         self.start(MediaTarget.blu_ray(profile.root), profile)
 
     def open_audio_cd(self, profile: DiscProfile) -> None:
+        self._album_copy = album_copy_tracks(profile.root)
         info = self._audio_cd_info(profile)
         album = info.album or profile.display_name
         self.audio_cd.show_disc(
@@ -659,7 +662,8 @@ class MainWindow(QMainWindow):
         disc with no CD-TEXT, and it gets numbered tracks and a drawn face.
         """
         reader = getattr(self.engine, "audio_cd_info", None)
-        if not callable(reader):
+        if not callable(reader) or self._album_copy:
+            # A locker copy has no disc to ask: its tracks are files.
             return AudioCdInfo()
         try:
             return reader(MediaTarget.audio_cd(str(profile.root)))
@@ -674,6 +678,9 @@ class MainWindow(QMainWindow):
         self._track = index
         self._playing_started = False
         self.audio_cd.set_playing(index)
+        if index < len(self._album_copy):
+            self.engine.open(MediaTarget.file(self._album_copy[index]))
+            return
         self.engine.open(MediaTarget.audio_cd(str(self.profile.root), track=index))
 
     def _step_track(self, direction: int) -> bool:

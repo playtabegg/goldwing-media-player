@@ -367,6 +367,33 @@ def _identify_dvd(root: Path, video_ts: Path, label: str) -> DiscProfile:
     )
 
 
+def _album_copy_wavs(entries: list[Path]) -> list[Path]:
+    """The WAVs of an album's locker copy, in track order: [] unless a CUE sheet sits beside them.
+
+    A disc's own CD tracks come first, as in ``identify``: a root that lists them is a disc, whatever else it holds.
+    """
+    if any(path.suffix.lower() == _CDA_SUFFIX for path in entries):
+        return []
+    if not any(path.suffix.lower() == ".cue" for path in entries):
+        return []
+    return sorted(path for path in entries if path.suffix.lower() == ".wav")
+
+
+def album_copy_tracks(root: Path) -> list[Path]:
+    """An album's locker copy, as the files to play, in the order its page lists them.
+
+    Such a copy reads as an audio CD (its page and its tracks are a CD's), but there is no
+    disc to ask for track N: each track is its own WAV. [] for a real disc, an image, or
+    anything that is not such a copy (30 Oct 2026: the copy was read, then never played).
+    """
+    try:
+        if not root.is_dir():
+            return []
+        return _album_copy_wavs(list(root.iterdir()))
+    except OSError:
+        return []
+
+
 def _identify_audio_cd(root: Path, tracks: list[Path], label: str) -> DiscProfile:
     titles = tuple(
         TitleSummary(number=number, name=path.stem, duration_ms=0)
@@ -489,10 +516,9 @@ def identify(target: Path | str, *, label: str = "") -> DiscProfile:
     # An album's locker copy: the mastered WAVs beside their CUE sheet, the
     # same bytes the workshop wrote to the disc. Read as the album it is,
     # not as a data folder (the second survey, 30 Aug 2026).
-    if any(path.suffix.lower() == ".cue" for path in entries):
-        wavs = sorted(path for path in entries if path.suffix.lower() == ".wav")
-        if wavs:
-            return _with_meta(_identify_audio_cd(root, wavs, label))
+    wavs = _album_copy_wavs(entries)
+    if wavs:
+        return _with_meta(_identify_audio_cd(root, wavs, label))
 
     bdmv = _bdmv_dir(root)
     if bdmv is not None:
