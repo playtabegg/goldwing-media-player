@@ -134,7 +134,7 @@ class TestOneSentence:
     def test_a_forged_feed_is_a_sentence(self, signer: Signer) -> None:
         forged = Signer()
         out = check_for_update("1.0.0", endpoints=("https://github.com/a/latest.json",), pubs=pubs(signer), fetch=fetcher(forged, make_feed(forged)))
-        assert out.sentence == "The release feed is not signed by We The Indies."
+        assert out.sentence == "The release feed is not signed by We the Indies."
         assert not out.newer
 
     def test_every_sentence_ends_with_a_full_stop(self, signer: Signer) -> None:

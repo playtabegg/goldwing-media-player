@@ -139,7 +139,7 @@ def fetch_bytes(
         ) from error
     except Exception as error:
         raise FeedProblem(
-            "Could not reach We The Indies. Check your internet, then try again."
+            "Could not reach We the Indies. Check your internet, then try again."
         ) from error
     if len(data) > cap:
         raise FeedProblem("The release server sent more than Goldwing will read.")
@@ -167,7 +167,7 @@ def parse_feed(
     if not pubs:
         raise FeedProblem("This build carries no release key, so it cannot check.")
     if not verify_any(raw, sig_text, pubs):
-        raise FeedProblem("The release feed is not signed by We The Indies.")
+        raise FeedProblem("The release feed is not signed by We the Indies.")
     try:
         feed = json.loads(raw)
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
@@ -252,5 +252,5 @@ def fetch_release(
     if feed_missing:
         raise FeedProblem(NOTHING_PUBLISHED, missing=True) from last
     raise last or FeedProblem(
-        "Could not reach We The Indies. Check your internet, then try again."
+        "Could not reach We the Indies. Check your internet, then try again."
     )

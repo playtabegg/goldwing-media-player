@@ -104,7 +104,7 @@ class TestParseFeed:
         raw, sig = signed(signer, make_feed(signer))
         stranger = parse_public_key(Signer().pub_line)
         assert stranger is not None
-        with pytest.raises(FeedProblem, match="not signed by We The Indies"):
+        with pytest.raises(FeedProblem, match="not signed by We the Indies"):
             parse_feed(raw, sig, [stranger])
 
     def test_a_tampered_feed_fails_before_it_is_parsed(self, signer: Signer, pubs) -> None:
@@ -197,7 +197,7 @@ class TestFetchRelease:
         def fetch(url: str, cap: int) -> bytes:
             if url.startswith(endpoints[0]):
                 raise FeedProblem("The release server does not have that file. Try again later.", missing=True)
-            raise FeedProblem("Could not reach We The Indies. Check your internet, then try again.")
+            raise FeedProblem("Could not reach We the Indies. Check your internet, then try again.")
 
         with pytest.raises(FeedProblem) as caught:
             fetch_release(endpoints, pubs, fetch=fetch)

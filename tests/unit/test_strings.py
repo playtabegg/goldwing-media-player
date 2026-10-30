@@ -219,7 +219,7 @@ class TestSayWhatToDoNext:
         # Help > "Check for a new Goldwing…", so the sentence under it says
         # who is being asked, not which server answered.
         assert strings.UPDATE_MENU == "Check for a new Goldwing…"
-        assert "We The Indies" in strings.UPDATE_CHECKING
+        assert "We the Indies" in strings.UPDATE_CHECKING
         assert "Goldwing" in strings.UPDATE_CHECKING
         assert "server" not in strings.UPDATE_CHECKING.lower()
 

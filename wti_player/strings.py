@@ -67,13 +67,13 @@ GAME_MENU_MISSING = (
     "Goldwing will open the menu from there."
 )
 GO_HOME = "Home"
-KIND_OURS_GAME = "We The Indies game"
+KIND_OURS_GAME = "We the Indies game"
 GAME_OURS = (
-    "This is a We The Indies game. Goldwing opens the disc menu. "
+    "This is a We the Indies game. Goldwing opens the disc menu. "
     "The game itself is what plays."
 )
 GAME_OURS_IMAGE = (
-    "This is a We The Indies game, saved as a disc image. "
+    "This is a We the Indies game, saved as a disc image. "
     "Put the disc in a drive, or open the folder laid out like the disc, "
     "and Goldwing will open the disc menu. The game itself is what plays."
 )
@@ -297,13 +297,13 @@ def menu_command_unsupported(reason: str) -> str:
 # -- checking for a new Player (only when asked) ----------------------------
 
 UPDATE_MENU = "Check for a new Goldwing…"
-UPDATE_CHECKING = "Asking We The Indies for a newer Goldwing…"
+UPDATE_CHECKING = "Asking We the Indies for a newer Goldwing…"
 UPDATE_UNEXPECTED = (
     "The check did not finish. Nothing was changed, and you can ask again "
     "from the Help menu."
 )
 UPDATE_NOT_OURS = (
-    "The download is not signed by We The Indies, so it was thrown away. "
+    "The download is not signed by We the Indies, so it was thrown away. "
     "Nothing was installed."
 )
 UPDATE_COULD_NOT_START = (
@@ -349,7 +349,7 @@ def update_offer(version: str, running: str) -> str:
     """The sentence on the offer, before the two buttons."""
     return (
         f"Goldwing {version} is out. You have {running}. "
-        "It downloads from We The Indies, is checked twice before it runs, "
+        "It downloads from We the Indies, is checked twice before it runs, "
         "and Goldwing closes while it installs."
     )
 
@@ -405,7 +405,7 @@ COPY_KEY = "Copy"
 KEY_COPIED = "The key is copied. Goldwing keeps no note of it; the clipboard holds it until you copy something else."
 # Said beside a key whose record We The Indies did not sign (a disc built on a machine without our key, or a copy
 # of a copy): the key is still shown, and what it proves is said plainly.
-KEY_NOT_SIGNED = "This record is not signed by We The Indies, so the disc alone does not prove the key. wetheindies.com/editions says which copy a key names."
+KEY_NOT_SIGNED = "This record is not signed by We the Indies, so the disc alone does not prove the key. wetheindies.com/editions says which copy a key names."
 SOUNDTRACK_FACT = "Soundtrack CD in the case"
 
 

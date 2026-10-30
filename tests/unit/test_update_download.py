@@ -52,7 +52,7 @@ class TestDownload:
         key = parse_public_key(signer.pub_line)
         assert key is not None
         release = parse_feed(raw, signer.minisig(raw), [key])
-        with pytest.raises(DownloadProblem, match="not signed by We The Indies"):
+        with pytest.raises(DownloadProblem, match="not signed by We the Indies"):
             download_installer(release, tmp_path, [key], fetch=lambda u, c: ARTIFACT)
         assert not any(tmp_path.rglob("*.exe"))
 

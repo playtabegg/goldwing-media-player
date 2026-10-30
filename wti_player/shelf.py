@@ -45,7 +45,7 @@ MAX_SHELF = 200
 
 #: What a verified record earns on a row. Said only when the signature
 #: verifies against a key in the Player's trusted list; never a gate.
-SIGNED_BY_US = "signed by We The Indies"
+SIGNED_BY_US = "signed by We the Indies"
 
 
 @dataclass(frozen=True)

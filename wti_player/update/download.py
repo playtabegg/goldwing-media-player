@@ -46,7 +46,7 @@ def download_installer(
     if hashlib.sha256(data).hexdigest() != release.sha256:
         raise DownloadProblem("The download does not match the release's checksum.")
     if not verify_any(data, release.signature, pubs):
-        raise DownloadProblem("The download is not signed by We The Indies.")
+        raise DownloadProblem("The download is not signed by We the Indies.")
     if not release.url.lower().endswith(".exe"):
         raise DownloadProblem("The release named a file Goldwing will not run.")
     dest_dir.mkdir(parents=True, exist_ok=True)
