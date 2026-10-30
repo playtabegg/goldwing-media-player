@@ -1,13 +1,13 @@
 # Goldwing Media Player
 
-**A free media player for movies, music and compatible game discs.**
+**A free media player for films, music and compatible game discs.**
 
 Goldwing brings playback, chapters and your disc's artwork into one Windows
 app. It uses **VLC's libVLC playback engine** and is free software under the
 **GNU General Public License, version 3 or later**.
 
-Play movies, albums and compatible Windows game discs made and distributed
-through [We The Indies](https://wetheindies.com), an independent physical
+Play films, albums and compatible Windows game discs made and distributed
+through [We the Indies](https://wetheindies.com), an independent physical
 publisher for games, films and music. That includes compatible discs built
 with [Rialto 1.5](https://wetheindies.com/resources/rialto), the free disc-making
 software for independent developers, filmmakers and musicians. Goldwing also
@@ -15,7 +15,7 @@ plays supported unprotected discs you already own.
 
 ## Download for Windows
 
-[**Download Goldwing Media Player 1.0.2**](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.2/GoldwingMediaPlayer-Setup-1.0.2.exe)
+[**Download Goldwing Media Player 1.0.3**](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.3/GoldwingMediaPlayer-Setup-1.0.3.exe)
 
 Windows 10 (1809 or later) or Windows 11, 64-bit. **The installer includes the
 Player and its playback libraries. You do not need to install VLC, Python or
@@ -27,18 +27,18 @@ to open it, or use its Start menu shortcut later. Choose **Open a folder**,
 the installer does not take over file associations.
 
 The installer is code-signed by **We The Indies, LLC**. Check the publisher and
-the [published SHA-256](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.2/GoldwingMediaPlayer-Setup-1.0.2.exe.sha256)
+the [published SHA-256](https://github.com/playtabegg/goldwing-media-player/releases/download/v1.0.3/GoldwingMediaPlayer-Setup-1.0.3.exe.sha256)
 before installing. A new signed installer can still prompt Windows SmartScreen.
 
 **Mac and Linux versions are coming soon.** Today's installer is for Windows.
 
 ## What it plays
 
-- **Movies:** unprotected DVD-Video and Blu-ray, with chapters and supported
+- **Films:** unprotected DVD-Video and Blu-ray, with chapters and supported
   menus. Blu-ray HDMV menus are supported; Java-based BD-J menus are not.
 - **Music:** audio CDs, with CD-TEXT track names when supplied by the disc,
-  and supported music content on movie/data discs.
-- **We The Indies and Rialto discs:** supported movies, music and Windows
+  and supported music content on film or data discs.
+- **We the Indies and Rialto discs:** supported films, music and Windows
   game launchers, with the title, chapters and actual case/disc artwork
   supplied on the disc.
 - **Game discs:** open a compatible Windows launcher/menu to install or
@@ -62,7 +62,7 @@ offering an update. It asks before downloading or installing.
 
 ## Protected commercial discs and the roadmap
 
-**CSS-protected DVDs and AACS-protected Blu-rays do not play in 1.0.2.**
+**CSS-protected DVDs and AACS-protected Blu-rays do not play in Goldwing.**
 Goldwing does not include a descrambler or claim licensed protected playback.
 Code-signing the installer does not grant disc-content licences.
 
